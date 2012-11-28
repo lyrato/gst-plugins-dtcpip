@@ -72,7 +72,6 @@ struct _GstDtcpIpDec
   GstPad *sinkpad, *srcpad;
 
   // Properties
-  gboolean silent;
   gchar *dtcp1host;
   guint dtcp1port;
   gchar *dtcpip_storage;
