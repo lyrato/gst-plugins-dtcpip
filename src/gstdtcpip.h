@@ -52,40 +52,42 @@ G_BEGIN_DECLS
 
 /* #defines don't like whitespacey bits */
 #define GST_TYPE_DTCPIP \
-  (gst_dtcpipdec_get_type())
+  (gst_dtcpip_get_type())
 #define GST_DTCPIP(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_DTCPIP,GstDtcpIpDec))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_DTCPIP,GstDtcpIp))
 #define GST_DTCPIP_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_DTCPIP,GstDtcpIpDecClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_DTCPIP,GstDtcpIpClass))
 #define GST_IS_DTCPIP(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_DTCPIP))
 #define GST_IS_DTCPIP_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_DTCPIP))
 
-typedef struct _GstDtcpIpDec      GstDtcpIpDec;
-typedef struct _GstDtcpIpDecClass GstDtcpIpDecClass;
+typedef struct _GstDtcpIp      GstDtcpIp;
+typedef struct _GstDtcpIpClass GstDtcpIpClass;
 
-struct _GstDtcpIpDec
+struct _GstDtcpIp
 {
   GstElement element;
 
   GstPad *sinkpad, *srcpad;
 
   // Properties
+  gboolean dtcp_disabled;
   gchar *dtcp1host;
   guint dtcp1port;
   gchar *dtcpip_storage;
+  gchar *dtcpip_library;
 
   // DTCP Instance variable
   int session_handle;
 };
 
-struct _GstDtcpIpDecClass 
+struct _GstDtcpIpClass
 {
   GstElementClass parent_class;
 };
 
-GType gst_dtcpipdec_get_type (void);
+GType gst_dtcpip_get_type (void);
 
 G_END_DECLS
 
