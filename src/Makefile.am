@@ -1,7 +1,7 @@
 # Note: plugindir is set in configure
 
 ##############################################################################
-# TODO: change libgstdtcpip.la to something else, e.g. libmysomething.la     #
+# TODO: change libgstplugin.la to something else, e.g. libmysomething.la     #
 ##############################################################################
 plugin_LTLIBRARIES = libgstdtcpip.la
 
@@ -14,14 +14,13 @@ plugin_LTLIBRARIES = libgstdtcpip.la
 ##############################################################################
 
 # sources used to compile this plug-in
-libgstdtcpip_la_SOURCES = gstdtcpip.c gstdtcpip.h rui_dtcpip.h
+libgstdtcpip_la_SOURCES = gstdtcpip.c gstdtcpip.h rui_dtcpip.h rui_dtcpip.c rui_dll.h rui_dll.c
 
 # compiler and linker flags used to compile this plugin, set in configure.ac
 libgstdtcpip_la_CFLAGS = $(GST_CFLAGS)
-libgstdtcpip_la_CXXFLAGS = $(GST_CFLAGS)
 libgstdtcpip_la_LIBADD = $(GST_LIBS)
-libgstdtcpip_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) -L/media/truecrypt1/dtcp-ip_sik -l:dtcpip.so
+libgstdtcpip_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
 libgstdtcpip_la_LIBTOOLFLAGS = --tag=disable-static
 
 # headers we need but don't want installed
-noinst_HEADERS = gstdtcpip.h rui_dtcpip.h
+noinst_HEADERS = gstdtcpip.h rui_dtcpip.h rui_dll.h
