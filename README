@@ -1,34 +1,28 @@
 WHAT IT IS
 ----------
 
-gst-plugin is a template for writing your own GStreamer plug-in.
+dtcpip is a filter type component which will decrypt DTCP/IP encrypted content retrieved via HTTP GET from a DLNA (Digital Living Network Allicance) DMS (Digital Media Server).
 
-The code is deliberately kept simple so that you quickly understand the basics
-of how to set up autotools and your source tree.
+This element utilizes DTCP/IP keys and a shared library which is loaded at runtime which performs the key exchange and decryption.  The following environment variables specify the location of the keys and shared library:
+RUIH_GST_DTCP_KEY_STORAGE - directory containing keys, should end with /
+RUIH_GST_DTCP_DLL - name including directory path to shared library to load 
 
-This template demonstrates :
-- what to do in autogen.sh
-- how to setup configure.ac (your package name and version, GStreamer flags)
-- how to setup your source dir 
-- what to put in Makefile.am
+DTCP/IP decryption can be disabled in which this element would just act as a passthrough by defining the following env var:
+RUIH_GST_DTCP_DISABLE
 
-More features and templates might get added later on.
+In order to facilitate testing with Tru2Way OCAP RI DMS, this element can be configured through env vars to use a "mock" dll.  This "mock" dll has stubs for decryption methods and does no actual key exchange or decryption.  The "mock" library can only be used with an Tru2Way OCAP RI DMS which is also configured to use a "mock" library.  The mock *.so is checked into the test subdirectory. 
 
-HOW TO USE IT
--------------
+For use on the RUIH project, this element is not intended to be autoplugged by playbin, but rather to be included and managed by the dlnasrc element.
 
-To use it, either make a copy for yourself and rename the parts or use the
-make_element script in tools. To create sources for "myfilter" based on the
-"gsttransform" template run:
+HOW TO BUILD IT
+---------------
+Issue the following commands from the dtcpip directory:
+./autogen.sh
 
-cd src;
-../tools/make_element myfilter gsttransform
+This will produce a Makefile, initiate the make via:
+make
 
-This will create gstmyfilter.c and gstmyfilter.h. Open them in an editor and
-start editing. There are several occurances of the string "template", update
-those with real values. The plugin will be called 'myfilter' and it will have
-one element called 'myfilter' too. Also look for "FIXME:" markers that point you
-to places where you need to edit the code.
+Install the plugin via:
+sudo make install
 
-You still need to adjust the Makefile.am.
-
+This plugin will be built when entering the same commands from gst-plugins-cl (parent directory)
