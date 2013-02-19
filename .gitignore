@@ -20,4 +20,5 @@ Makefile
 Makefile.in
 missing
 stamp-h1
+my-plugin-*.tar.*
 test/test

@@ -62,9 +62,14 @@
 
 #include <gst/gst.h>
 #include <string.h>
+#include <stdio.h>
+#include <dlfcn.h>    /* dlopen(3), dlerror(3), dlsym(3), dlclose(3) */
+
 
 #include "gstdtcpip.h"
 #include "rui_dtcpip.h"
+
+//#define GSTREAMER_010
 
 #define GST_CAT_DEFAULT gst_dtcpip_debug
 GST_DEBUG_CATEGORY_STATIC (GST_CAT_DEFAULT);
@@ -78,6 +83,9 @@ enum
 };
 
 #define RUIH_GST_DTCP_DISABLE "RUIH_GST_DTCP_DISABLE"
+
+#define RTLD_NOW	0x00002	/* Immediate function call binding.  */
+
 
 /* the capabilities of the inputs and outputs.
  *
@@ -96,17 +104,28 @@ static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS ("ANY")
     );
 
+#ifdef GSTREAMER_010
+GST_BOILERPLATE (GstDtcpIp, gst_dtcpip, GstElement,
+    GST_TYPE_ELEMENT);
+#else
 #define gst_dtcpip_parent_class parent_class
 G_DEFINE_TYPE (GstDtcpIp, gst_dtcpip, GST_TYPE_ELEMENT);
+#endif
 
 static void gst_dtcpip_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void gst_dtcpip_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
+#ifdef GSTREAMER_010
+static gboolean gst_dtcpip_set_caps (GstPad * pad, GstCaps * caps);
+static GstFlowReturn gst_dtcpip_chain (GstPad * pad, GstBuffer * buf);
+#else
 static gboolean gst_dtcpip_pad_event(GstPad *pad, GstObject *parent, GstEvent *event);
 //static gboolean gst_dtcpip_pad_query(GstPad *pad, GstObject *parent, GstQuery *query);
 static GstFlowReturn gst_dtcpip_chain (GstPad * pad, GstObject* parent, GstBuffer * buf);
+#endif
+
 static GstStateChangeReturn gst_dtcpip_change_state (GstElement *element,
     GstStateChange transition);
 
@@ -118,16 +137,41 @@ static GstStateChangeReturn gst_dtcpip_change_state (GstElement *element,
 static gboolean
 dtcpip_init (GstPlugin * plugin)
 {
-	//printf(">>> dtcpip: plugin_init: %s: \"%s\"\n",
-	//    gst_plugin_get_name(plugin),
-	//    gst_plugin_get_description(plugin));
-	/* debug category for fltering log messages */
 	GST_DEBUG_CATEGORY_INIT (GST_CAT_DEFAULT, "dtcpip",
 			0, "DTCP-IP library diagnostic output");
+
+	if (!rui_dtcpip_init())
+	{
+		GST_ERROR_OBJECT(plugin, "Problems initializing dll");
+		return FALSE;
+	}
+	else
+	{
+		GST_INFO_OBJECT(plugin, "Successfully initialized dll");
+	}
 
 	return gst_element_register (plugin, "dtcpip", GST_RANK_NONE,
 			GST_TYPE_DTCPIP);
 }
+
+#ifdef GSTREAMER_010
+static void
+gst_dtcpip_base_init (gpointer gclass)
+{
+	GstElementClass *element_class = GST_ELEMENT_CLASS (gclass);
+
+	gst_element_class_set_details_simple(element_class,
+			"DTCP-IP decryption",
+			"Decrypt/DTCP", // see docs/design/draft-klass.txt
+			"Decrypts link-encrypted DTCP-IP DLNA content",
+			"Doug Young <D.Young@cablelabs.com> 2/19/13 11:45 AM");
+
+	gst_element_class_add_pad_template (element_class,
+			gst_static_pad_template_get (&src_factory));
+	gst_element_class_add_pad_template (element_class,
+			gst_static_pad_template_get (&sink_factory));
+}
+#endif
 
 /* initialize the dtcpip's class */
 static void
@@ -152,18 +196,20 @@ gst_dtcpip_class_init (GstDtcpIpClass * klass)
 	g_object_class_install_property (gobject_class, PROP_DTCPIP_STORAGE,
 			g_param_spec_string ("dtcpip_storage", "dtcpip_storage",
 					"Directory that contains client's keys",
-					"/media/truecrypt1/dll/test_keys", G_PARAM_READWRITE));
+					"/media/truecrypt1/dll/test_keys", G_PARAM_READABLE));
 
+#ifndef GSTREAMER_010
     gst_element_class_set_details_simple(gstelement_class,
 			"DTCP-IP decryption",
 			"Decrypt/DTCP", // see docs/design/draft-klass.txt
 			"Decrypts link-encrypted DTCP-IP DLNA content",
-			"Doug Young <D.Young@cablelabs.com> 11/20/12 8:09 PM");
+			"Doug Young <D.Young@cablelabs.com> 2/19/12 11:45 AM");
 
 	gst_element_class_add_pad_template (gstelement_class,
 			gst_static_pad_template_get (&src_factory));
 	gst_element_class_add_pad_template (gstelement_class,
 			gst_static_pad_template_get (&sink_factory));
+#endif
 
 	gstelement_class->change_state = gst_dtcpip_change_state;
 }
@@ -174,44 +220,45 @@ gst_dtcpip_class_init (GstDtcpIpClass * klass)
  * initialize instance structure
  */
 static void
+#ifdef GSTREAMER_010
+gst_dtcpip_init (GstDtcpIp * filter,
+		GstDtcpIpClass * gclass)
+#else
 gst_dtcpip_init (GstDtcpIp * filter)
+#endif
 {
-	GST_INFO_OBJECT(filter, "Initializing");
-
 	// Initialize sink pad
 	filter->sinkpad = gst_pad_new_from_static_template (&sink_factory, "sink");
 
+#ifdef GSTREAMER_010
+	gst_pad_set_setcaps_function (filter->sinkpad,
+				GST_DEBUG_FUNCPTR(gst_dtcpip_set_caps));
+	gst_pad_set_getcaps_function (filter->sinkpad,
+				GST_DEBUG_FUNCPTR(gst_pad_proxy_getcaps));
+#else
 	gst_pad_set_event_function (filter->sinkpad,
 			GST_DEBUG_FUNCPTR(gst_dtcpip_pad_event));
-
+#endif
 	gst_pad_set_chain_function (filter->sinkpad,
 			GST_DEBUG_FUNCPTR(gst_dtcpip_chain));
 
+#ifdef GSTREAMER_010
+	filter->srcpad = gst_pad_new_from_static_template (&src_factory, "src");
+	gst_pad_set_getcaps_function (filter->srcpad,
+				GST_DEBUG_FUNCPTR(gst_pad_proxy_getcaps));
+#else
 	GST_PAD_SET_PROXY_CAPS (filter->sinkpad);
+#endif
 
 	gst_element_add_pad (GST_ELEMENT (filter), filter->sinkpad);
 
 	// Initialize src pad
+#ifndef GSTREAMER_010
 	filter->srcpad = gst_pad_new_from_static_template (&src_factory, "src");
 
 	GST_PAD_SET_PROXY_CAPS (filter->srcpad);
-
+#endif
 	gst_element_add_pad (GST_ELEMENT (filter), filter->srcpad);
-
-	/* *TODO* - old 0.10 code that I didn't see a direct mapping for
-		//gst_pad_set_setcaps_function (filter->sinkpad,
-		//		GST_DEBUG_FUNCPTR(gst_dtcpip_set_caps));
-
-		//gst_pad_set_getcaps_function (filter->sinkpad,
-		//		GST_DEBUG_FUNCPTR(gst_pad_proxy_getcaps));
-		gst_pad_set_query_function (filter->sinkpad,
-						GST_DEBUG_FUNCPTR(gst_dtcpip_pad_query));
-
-		//gst_pad_set_getcaps_function (filter->srcpad,
-		//		GST_DEBUG_FUNCPTR(gst_pad_proxy_getcaps));
-		gst_pad_set_query_function (filter->srcpad,
-						GST_DEBUG_FUNCPTR(gst_dtcpip_pad_query));
-	*/
 
 	// Initialize element properties
 	filter->dtcp1host = NULL;
@@ -230,10 +277,6 @@ gst_dtcpip_init (GstDtcpIp * filter)
 		GST_INFO_OBJECT(filter, "DTCP is enabled due to disable env var NOT set: %s",
 				RUIH_GST_DTCP_DISABLE);
 	}
-
-	// Read env var to get storage path and libary
-	filter->dtcpip_storage = NULL;
-	filter->dtcpip_library = NULL;
 
 	// Initialize DTCP instance variable
 	filter->session_handle = -1;
@@ -259,14 +302,6 @@ gst_dtcpip_set_property (GObject * object, guint prop_id,
 	case PROP_DTCP1PORT:
 		filter->dtcp1port = g_value_get_uint(value);
 		GST_INFO_OBJECT(filter, "Port property: %d", filter->dtcp1port);
-		break;
-	case PROP_DTCPIP_STORAGE:
-		if (filter->dtcpip_storage)
-		{
-			g_free(filter->dtcpip_storage);
-		}
-		filter->dtcpip_storage = g_value_dup_string (value);
-		GST_INFO_OBJECT(filter, "Key storage property: %s", filter->dtcpip_storage);
 		break;
 	default:
 		GST_INFO_OBJECT(filter, "Unknown property id: %d", prop_id);
@@ -298,11 +333,7 @@ gst_dtcpip_get_property (GObject * object, guint prop_id,
 	}
 }
 
-/* GstElement vmethod implementations */
-
-// *TODO* - old code from gs 0.10, can it be removed?
-/* this function handles the link with other elements */
-/*
+#ifdef GSTREAMER_010
 static gboolean
 gst_dtcpip_set_caps (GstPad * pad, GstCaps * caps)
 {
@@ -314,8 +345,10 @@ gst_dtcpip_set_caps (GstPad * pad, GstCaps * caps)
 
 	return gst_pad_set_caps (otherpad, caps);
 }
-*/
+#endif
 
+
+#ifndef GSTREAMER_010
 static gboolean gst_dtcpip_pad_event(GstPad *pad, GstObject *parent, GstEvent *event)
 {
 	gboolean ret;
@@ -345,6 +378,7 @@ static gboolean gst_dtcpip_pad_event(GstPad *pad, GstObject *parent, GstEvent *e
 	}
 	return ret;
 }
+#endif
 
 // *TODO* - thought this might be needed for conversion to 1.0
 /*
@@ -368,7 +402,7 @@ gst_dtcpip_change_state (GstElement *element, GstStateChange transition)
 	GstDtcpIp *filter = GST_DTCPIP (element);
 	char dtcpip_version[1024];
 
-	GST_DEBUG_OBJECT(filter, "GST_STATE_CHANGE_%s_TO_%s",
+	GST_INFO_OBJECT(filter, "GST_STATE_CHANGE_%s_TO_%s",
 			gst_element_state_get_name(GST_STATE_TRANSITION_CURRENT(transition)),
 			gst_element_state_get_name(GST_STATE_TRANSITION_NEXT(transition)) );
 
@@ -378,7 +412,8 @@ gst_dtcpip_change_state (GstElement *element, GstStateChange transition)
 		/* Allocate non-stream-specific resources (libs, mem) */
 		if (!filter->dtcp_disabled)
 		{
-			ret_val = dtcpip_cmn_init(filter->dtcpip_storage);
+			/*
+			ret_val = g_dtcpip_ftable->dtcpip_cmn_init(filter->dtcpip_storage);
 			if (IS_DTCPIP_FAILURE(ret_val))
 			{
 				GST_ERROR_OBJECT(filter, "Problems initializing dtcpip_cmn_init(\"%s\"), rc: %d",
@@ -390,12 +425,12 @@ gst_dtcpip_change_state (GstElement *element, GstStateChange transition)
 				GST_DEBUG_OBJECT(filter, "Initialized dtcpip_cmn_init(\"%s\")",
 						filter->dtcpip_storage);
 			}
-
-			dtcpip_cmn_get_version(dtcpip_version, sizeof(dtcpip_version));
+			*/
+			g_dtcpip_ftable->dtcpip_cmn_get_version(dtcpip_version, sizeof(dtcpip_version));
 			GST_DEBUG_OBJECT(filter, "Got dtcpip_cmn_get_version\"=%s\"", dtcpip_version);
 
 			GST_DEBUG_OBJECT(filter, "Calling dtcpip_snk_init()");
-			ret_val = dtcpip_snk_init();
+			ret_val = g_dtcpip_ftable->dtcpip_snk_init();
 			if (IS_DTCPIP_FAILURE(ret_val))
 			{
 				GST_ERROR_OBJECT(filter, "Problems in dtcpip_snk_init(\"%s\"), rc: %d",
@@ -417,7 +452,7 @@ gst_dtcpip_change_state (GstElement *element, GstStateChange transition)
 		if (!filter->dtcp_disabled)
 		{
 			/* Allocate stream-specific resources */
-			ret_val = dtcpip_snk_open(filter->dtcp1host, filter->dtcp1port, &(filter->session_handle));
+			ret_val = g_dtcpip_ftable->dtcpip_snk_open(filter->dtcp1host, filter->dtcp1port, &(filter->session_handle));
 			if (IS_DTCPIP_FAILURE(ret_val))
 			{
 				GST_ERROR_OBJECT(filter, "Problems in dtcpip_snk_open() using host: %s, port: %d, rc: %d",
@@ -454,7 +489,7 @@ gst_dtcpip_change_state (GstElement *element, GstStateChange transition)
 		/* De-llocate stream-specific resources */
 		if (!filter->dtcp_disabled)
 		{
-			ret_val = dtcpip_snk_close(filter->session_handle);
+			ret_val = g_dtcpip_ftable->dtcpip_snk_close(filter->session_handle);
 			if (IS_DTCPIP_FAILURE(ret_val))
 			{
 				GST_ERROR_OBJECT(filter, "Problems closing");
@@ -482,33 +517,51 @@ gst_dtcpip_change_state (GstElement *element, GstStateChange transition)
  * this function does the actual processing
  */
 static GstFlowReturn // GST_FLOW_OK, GST_FLOW_ERROR
+#ifdef GSTREAMER_010
+gst_dtcpip_chain (GstPad * pad, GstBuffer * inbuf)
+#else
 gst_dtcpip_chain (GstPad * pad, GstObject * parent, GstBuffer * inbuf)
+#endif
 {
 	int ret_val;
 	GstDtcpIp *filter;
+#ifndef GSTREAMER_010
 	GstMapInfo map;
+#endif
 	char* encrypted_data;
 	char* cleartext_data;
 	size_t encrypted_size, cleartext_size;
 	GstBuffer *outbuf;
 	GstFlowReturn gfr = GST_FLOW_ERROR;
 
+#ifdef GSTREAMER_010
+	filter = GST_DTCPIP (GST_OBJECT_PARENT (pad));
+	//GST_DEBUG_OBJECT(filter, "buffer %p, %u bytes",
+	//			GST_BUFFER_DATA(inbuf), GST_BUFFER_SIZE(inbuf));
+#else
 	filter = GST_DTCPIP (parent);
 	gst_buffer_map (inbuf, &map, GST_MAP_READ);
-
-	//GST_LOG_OBJECT(filter, "buffer %p, %u bytes", map.data, map.size);
+	//GST_INFO_OBJECT(filter, "buffer %p, %u bytes", map.data, map.size);
+#endif
 
 	// 1. set our encrypted data pointer
+#ifdef GSTREAMER_010
+	encrypted_data = (char*)GST_BUFFER_DATA(inbuf);
+	encrypted_size = GST_BUFFER_SIZE(inbuf);
+#else
 	encrypted_data = (char*)map.data;
 	encrypted_size = map.size;
+#endif
 
-	// *TODO* - should we really be unref buffer here?
-	//gst_buffer_unref(inbuf);
+	if (!filter->dtcp_disabled)
+	{
+		//gst_buffer_unref(inbuf);
+	}
 
 	// 2. Call the DTCPIP decryption
 	if (!filter->dtcp_disabled)
 	{
-		ret_val = dtcpip_snk_alloc_decrypt(filter->session_handle,
+		ret_val = g_dtcpip_ftable->dtcpip_snk_alloc_decrypt(filter->session_handle,
 				encrypted_data, encrypted_size, &cleartext_data, &cleartext_size);
 		if (IS_DTCPIP_FAILURE(ret_val))
 		{
@@ -520,16 +573,26 @@ gst_dtcpip_chain (GstPad * pad, GstObject * parent, GstBuffer * inbuf)
 	// 3. Create a newly allocated buffer (refcount=1) without any data
 	if (!filter->dtcp_disabled)
 	{
+#ifdef GSTREAMER_010
 		outbuf = gst_buffer_new();
+#else
+		outbuf = gst_buffer_new_and_alloc(cleartext_size);
+#endif
 	}
 
 	// 4. Set the new buffer's data to be the decrypted cleartest
 	if (!filter->dtcp_disabled)
 	{
-		//gst_buffer_set_data(outbuf, (guint8*)cleartext_data, cleartext_size);
+#ifdef GSTREAMER_010
+		gst_buffer_set_data(outbuf, (guint8*)cleartext_data, cleartext_size);
+
+		//GST_DEBUG_OBJECT(filter, "buffer %p, %u bytes",
+		//			GST_BUFFER_DATA(outbuf), GST_BUFFER_SIZE(outbuf));
+#else
 		gst_buffer_fill(outbuf, 0, (guint8*)cleartext_data, cleartext_size);
 		gst_buffer_map (outbuf, &map, GST_MAP_READ);
-		GST_LOG_OBJECT(filter, "out buffer %p, %u bytes", map.data, map.size);
+		//GST_LOG_OBJECT(filter, "out buffer %p, %u bytes", map.data, map.size);
+#endif
 	}
 
 	// 5. push the data to our sink pad, and onto the downstream element
@@ -549,12 +612,13 @@ gst_dtcpip_chain (GstPad * pad, GstObject * parent, GstBuffer * inbuf)
 		{
 			GST_ERROR_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
 		}
+		//gst_buffer_unref(inbuf);
 	}
 
 	// 6. Free the cleartext buffer that was allocated implicitly
 	if (!filter->dtcp_disabled)
 	{
-		ret_val = dtcpip_snk_free(cleartext_data);
+		ret_val = g_dtcpip_ftable->dtcpip_snk_free(cleartext_data);
 		if (IS_DTCPIP_FAILURE(ret_val))
 		{
 			GST_ERROR_OBJECT(filter, "Failure calling dtcpip_snk_free(), ret_val=%d", ret_val);
@@ -584,7 +648,11 @@ gst_dtcpip_chain (GstPad * pad, GstObject * parent, GstBuffer * inbuf)
 GST_PLUGIN_DEFINE (
     GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
+#ifdef GSTREAMER_010
+    "dtcpip",
+#else
     dtcpip,
+#endif
     "DTCP (Digital Transmission Content Protection) plugins",
     dtcpip_init,
     VERSION,
