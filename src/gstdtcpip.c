@@ -69,7 +69,11 @@
 #include "gstdtcpip.h"
 #include "rui_dtcpip.h"
 
+// Uncomment to compile under GStreamer-0.10 instead of GStreamer-1.0
 //#define GSTREAMER_010
+
+// Uncomment to have output buffers saved to file
+//#define DEBUG_SAVE_BUFFER_CONTENT
 
 #define GST_CAT_DEFAULT gst_dtcpip_debug
 GST_DEBUG_CATEGORY_STATIC (GST_CAT_DEFAULT);
@@ -86,6 +90,10 @@ enum
 
 #define RTLD_NOW	0x00002	/* Immediate function call binding.  */
 
+#ifdef DEBUG_SAVE_BUFFER_CONTENT
+static FILE* g_debugBufferFile = NULL;
+static char* g_debugBufferFileName = "buffers.txt";
+#endif
 
 /* the capabilities of the inputs and outputs.
  *
@@ -280,6 +288,11 @@ gst_dtcpip_init (GstDtcpIp * filter)
 
 	// Initialize DTCP instance variable
 	filter->session_handle = -1;
+
+#ifdef DEBUG_SAVE_BUFFER_CONTENT
+	g_debugBufferFile = fopen(g_debugBufferFileName, "wb");
+#endif
+
 }
 
 static void
@@ -505,6 +518,10 @@ gst_dtcpip_change_state (GstElement *element, GstStateChange transition)
 		break;
 	case GST_STATE_CHANGE_READY_TO_NULL:
 		/* De-allocate non-stream-specific resources (libs, mem) */
+#ifdef DEBUG_SAVE_BUFFER_CONTENT
+	fclose(g_debugBufferFile);
+	g_debugBufferFile = NULL;
+#endif
 		break;
 	default:
 		break;
@@ -536,12 +553,14 @@ gst_dtcpip_chain (GstPad * pad, GstObject * parent, GstBuffer * inbuf)
 
 #ifdef GSTREAMER_010
 	filter = GST_DTCPIP (GST_OBJECT_PARENT (pad));
-	//GST_DEBUG_OBJECT(filter, "buffer %p, %u bytes",
+	//GST_DEBUG_OBJECT(filter, "input buffer %p, %u bytes",
 	//			GST_BUFFER_DATA(inbuf), GST_BUFFER_SIZE(inbuf));
+	//GST_DEBUG_OBJECT(filter, "input buffer %u bytes", GST_BUFFER_SIZE(inbuf));
 #else
 	filter = GST_DTCPIP (parent);
 	gst_buffer_map (inbuf, &map, GST_MAP_READ);
-	//GST_INFO_OBJECT(filter, "buffer %p, %u bytes", map.data, map.size);
+	//GST_INFO_OBJECT(filter, "input buffer %p, %u bytes", map.data, map.size);
+	//GST_INFO_OBJECT(filter, "input buffer %u bytes", map.size);
 #endif
 
 	// 1. set our encrypted data pointer
@@ -586,12 +605,14 @@ gst_dtcpip_chain (GstPad * pad, GstObject * parent, GstBuffer * inbuf)
 #ifdef GSTREAMER_010
 		gst_buffer_set_data(outbuf, (guint8*)cleartext_data, cleartext_size);
 
-		//GST_DEBUG_OBJECT(filter, "buffer %p, %u bytes",
+		//GST_DEBUG_OBJECT(filter, "output buffer %p, %u bytes",
 		//			GST_BUFFER_DATA(outbuf), GST_BUFFER_SIZE(outbuf));
+		//GST_DEBUG_OBJECT(filter, "output buffer %u bytes", GST_BUFFER_SIZE(outbuf));
 #else
 		gst_buffer_fill(outbuf, 0, (guint8*)cleartext_data, cleartext_size);
 		gst_buffer_map (outbuf, &map, GST_MAP_READ);
-		//GST_LOG_OBJECT(filter, "out buffer %p, %u bytes", map.data, map.size);
+		//GST_DEBUG_OBJECT(filter, "output buffer %p, %u bytes", map.data, map.size);
+		//GST_DEBUG_OBJECT(filter, "output buffer %u bytes", map.size);
 #endif
 	}
 
@@ -603,6 +624,19 @@ gst_dtcpip_chain (GstPad * pad, GstObject * parent, GstBuffer * inbuf)
 		{
 			GST_ERROR_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
 		}
+#ifdef DEBUG_SAVE_BUFFER_CONTENT
+#ifdef GSTREAMER_010
+		if (fwrite(GST_BUFFER_DATA(outbuf), GST_BUFFER_SIZE(outbuf), 1, g_debugBufferFile) != 1)
+		{
+			GST_WARNING_OBJECT(filter, "Failed to write %u bytes to debug file\n", cleartext_size);
+		}
+#else
+		if (fwrite(map.data, map.size, 1, g_debugBufferFile) != 1)
+		{
+			GST_WARNING_OBJECT(filter, "Failed to write %u bytes to debug file\n", cleartext_size);
+		}
+#endif
+#endif
 	}
 	else
 	{
@@ -612,6 +646,14 @@ gst_dtcpip_chain (GstPad * pad, GstObject * parent, GstBuffer * inbuf)
 		{
 			GST_ERROR_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
 		}
+#ifdef DEBUG_SAVE_BUFFER_CONTENT
+#ifdef GSTREAMER_010
+		if (fwrite(GST_BUFFER_DATA(inbuf), GST_BUFFER_SIZE(inbuf), 1, g_debugBufferFile) != 1)
+		{
+			GST_WARNING_OBJECT(filter, "Failed to write %u bytes to debug file\n", cleartext_size);
+		}
+#endif
+#endif
 		//gst_buffer_unref(inbuf);
 	}
 
