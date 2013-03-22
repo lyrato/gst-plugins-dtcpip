@@ -1,6 +1,6 @@
 #!/bin/sh
-#GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0
-GST_PLUGIN_PATH=/usr/local/lib/gstreamer-0.10
+GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0
+#GST_PLUGIN_PATH=/usr/local/lib/gstreamer-0.10
 export GST_PLUGIN_PATH
 #
 #RUIH_GST_DTCP_DISABLE=true
@@ -20,5 +20,5 @@ export LD_LIBRARY_PATH
 GST_DEBUG=*:3
 export GST_DEBUG
 #
-#gst-inspect-1.0 --gst-plugin-spew dtcpip
-gst-inspect-0.10 --gst-plugin-spew dtcpip
+gst-inspect-1.0 --gst-plugin-spew dtcpip
+#gst-inspect-0.10 --gst-plugin-spew dtcpip

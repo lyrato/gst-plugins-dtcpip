@@ -65,7 +65,6 @@
 #include <stdio.h>
 #include <dlfcn.h>    /* dlopen(3), dlerror(3), dlsym(3), dlclose(3) */
 
-
 #include "gstdtcpip.h"
 #include "rui_dtcpip.h"
 
@@ -137,30 +136,6 @@ static GstFlowReturn gst_dtcpip_chain (GstPad * pad, GstObject* parent, GstBuffe
 static GstStateChangeReturn gst_dtcpip_change_state (GstElement *element,
     GstStateChange transition);
 
-/* entry point to initialize the plug-in
- * initialize the plug-in itself
- * register the element factories and other features
- * the name (plugin_init) is specified in GST_PLUGIN_DEFINE at bottom
- */
-static gboolean
-dtcpip_init (GstPlugin * plugin)
-{
-	GST_DEBUG_CATEGORY_INIT (GST_CAT_DEFAULT, "dtcpip",
-			0, "DTCP-IP library diagnostic output");
-
-	if (!rui_dtcpip_init())
-	{
-		GST_ERROR_OBJECT(plugin, "Problems initializing dll");
-		return FALSE;
-	}
-	else
-	{
-		GST_INFO_OBJECT(plugin, "Successfully initialized dll");
-	}
-
-	return gst_element_register (plugin, "dtcpip", GST_RANK_NONE,
-			GST_TYPE_DTCPIP);
-}
 
 #ifdef GSTREAMER_010
 static void
@@ -274,6 +249,7 @@ gst_dtcpip_init (GstDtcpIp * filter)
 
 	// Read env vars to get disable flag, storage path and key file name
 	filter->dtcp_disabled = FALSE;
+
 	if (getenv(RUIH_GST_DTCP_DISABLE))
 	{
 		GST_WARNING_OBJECT(filter, "Disabling DTCP due to env var set: %s",
@@ -284,6 +260,16 @@ gst_dtcpip_init (GstDtcpIp * filter)
 	{
 		GST_INFO_OBJECT(filter, "DTCP is enabled due to disable env var NOT set: %s",
 				RUIH_GST_DTCP_DISABLE);
+
+		GST_INFO_OBJECT(filter, "Initializing shared library");
+		if (!rui_dtcpip_init())
+		{
+			GST_ERROR_OBJECT(filter, "Problems initializing shared library");
+		}
+		else
+		{
+			GST_INFO_OBJECT(filter, "Successfully initialized library");
+		}
 	}
 
 	// Initialize DTCP instance variable
@@ -674,13 +660,37 @@ gst_dtcpip_chain (GstPad * pad, GstObject * parent, GstBuffer * inbuf)
 	return gfr;
 }
 
+/*
+ * The following section supports the GStreamer auto plugging infrastructure.
+ * Set to 0 if this is done on a package level using (ie gstelements.[hc])
+ */
+#if 1
+
+/* entry point to initialize the plug-in
+ * initialize the plug-in itself
+ * register the element factories and other features
+ */
+static gboolean
+dtcpip_init (GstPlugin * dtcpip)
+{
+	/* debug category for fltering log messages
+	 *
+	 * exchange the string 'Template ' with your description
+	 */
+	GST_DEBUG_CATEGORY_INIT (GST_CAT_DEFAULT, "dtcpip",
+			0, "DTCP-IP library diagnostic output");
+
+	return gst_element_register (dtcpip, "dtcpip", GST_RANK_NONE,
+			GST_TYPE_DTCPIP);
+}
+
 /* PACKAGE: this is usually set by autotools depending on some _INIT macro
  * in configure.ac and then written into and defined in config.h, but we can
  * just set it ourselves here in case someone doesn't use autotools to
  * compile this code. GST_PLUGIN_DEFINE needs PACKAGE to be defined.
  */
 #ifndef PACKAGE
-#define PACKAGE "cl-plugins"
+#define PACKAGE "dtcpip"
 #endif
 
 /* gstreamer looks for this structure to register the dtcpip plugin
@@ -696,9 +706,11 @@ GST_PLUGIN_DEFINE (
     dtcpip,
 #endif
     "DTCP (Digital Transmission Content Protection) plugins",
-    dtcpip_init,
+    (GstPluginInitFunc)dtcpip_init,
     VERSION,
     "LGPL", // should be "proprietary", but that gets us blacklisted
     "CableLabs RUI-H RI",
     "http://www.cablelabs.com/"
 )
+
+#endif

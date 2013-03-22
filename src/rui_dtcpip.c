@@ -257,7 +257,7 @@ gboolean rui_dtcpip_init()
         }
         else
         {
-            g_printerr("%s - unable to load DTCP/IP library from \"%s\": MPEOS DLL error %d.\n",
+            g_printerr("%s - unable to load DTCP/IP library from \"%s\": Shared Library error %d.\n",
             		__FUNCTION__, dll_path, ret_code);
             return FALSE;
         }
