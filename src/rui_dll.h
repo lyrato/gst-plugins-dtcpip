@@ -1,7 +1,7 @@
 // COPYRIGHT_BEGIN
 //  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER
 //  
-//  Copyright (C) 2008-2009, Cable Television Laboratories, Inc. 
+//  Copyright (C) 2013 Cable Television Laboratories, Inc.
 //  
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -52,9 +52,8 @@ typedef void* rui_DlmodData; /* DLL data structure type (used for allocation). *
  * <i>rui_dlmodInit</i>
  *
  * Initialize the rui DLL support with the global function table (rui_ftable).
- * This populates the porting layer with the global function table pointer
- * so that it can be passed to library modules during intialization of the
- * modules.
+ * This populates the global function table pointer so that it can be passed to
+ * library modules during initialization of the modules.
  *
  * @param rui_ftable is a pointer to the global function table.
  */
@@ -69,8 +68,7 @@ void rui_dlmodInit(void **rui_ftable);
  *
  * @param name is a pointer to the name of the module to open.
  * @param dlmodId is a pointer for returning the identifier of the opened module.
- * @return The MPE error code if the create fails, otherwise <i>MPE_SUCCESS<i/> 
- *          is returned.
+ * @return FALSE if the create fails, otherwise TRUE is returned.
  */
 gboolean rui_dlmodOpen(const char *name, rui_Dlmod *dlmodId);
 
@@ -80,8 +78,7 @@ gboolean rui_dlmodOpen(const char *name, rui_Dlmod *dlmodId);
  * original library open call.
  *
  * @param dlmodId is the identifier of the target module.
- * @return The MPE error code if the create fails, otherwise <i>MPE_SUCCESS<i/> 
- *          is returned.
+ * @return false if DLL close fails, otherwise true is returned.
  */
 gboolean rui_dlmodClose(rui_Dlmod dlmodId);
 
@@ -96,8 +93,7 @@ gboolean rui_dlmodClose(rui_Dlmod dlmodId);
  *          the search/lookup.
  * @param value is a void pointer for returning the associated value of the target
  *          symbol.
- * @return The MPE error code if the create fails, otherwise <i>MPE_SUCCESS<i/> 
- *          is returned.
+ * @return FALSE if fails to get symbol, otherwise TRUE is returned.
  */
 gboolean rui_dlmodGetSymbol(rui_Dlmod dlmodId, const char *symbol,
         void **value);

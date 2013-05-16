@@ -1,7 +1,7 @@
 // COPYRIGHT_BEGIN
 //  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER
 //
-//  Copyright (C) 2008-2011, Cable Television Laboratories, Inc.
+//  Copyright (C) 2013 Cable Television Laboratories, Inc.
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 //  to this code shall be as set forth therein. No license is granted hereunder
 //  for any other purpose.
 // COPYRIGHT_END
+
 
 #include <stdio.h>
 #include <string.h> // memcpy, strrchr, strlen
@@ -96,28 +97,26 @@ static rui_Dlmod dtcp_dll = (rui_Dlmod) 0;
 
 DTCPIP_STUB(int, dtcpip_cmn_init, const char* storage_path)
 {
-    //MPEOS_LOG(MPE_LOG_DEBUG, MPE_MOD_HN, "%s NOT IMPLEMENTED\n", __FUNCTION__);
+    g_printf("%s NOT IMPLEMENTED\n", __FUNCTION__);
 
-    // need to return success so that hn init suceeds
     return TRUE;
 }
 
 DTCPIP_STUB(void, dtcpip_cmn_get_version, char* string, size_t length)
 {
-    snprintf(string, length, "DTCP NOT IMPLEMENTED");
+    g_printf("%s NOT IMPLEMENTED\n", __FUNCTION__);
 }
 
 DTCPIP_STUB(int, dtcpip_src_init, unsigned short dtcp_port)
 {
-    //MPEOS_LOG(MPE_LOG_DEBUG, MPE_MOD_HN, "%s NOT IMPLEMENTED\n", __FUNCTION__);
+    g_printf("%s NOT IMPLEMENTED\n", __FUNCTION__);
 
-    // need to return success so that hn init suceeds
     return TRUE;
 }
 
 DTCPIP_STUB(int, dtcpip_src_open, int* session_handle, int is_audio_only)
 {
-    //MPEOS_LOG(MPE_LOG_DEBUG, MPE_MOD_HN, "%s NOT IMPLEMENTED\n", __FUNCTION__);
+    g_printf("%s NOT IMPLEMENTED\n", __FUNCTION__);
 
     return -1;
 }
@@ -127,30 +126,23 @@ DTCPIP_STUB(int, dtcpip_src_alloc_encrypt, int session_handle,
                  char* cleartext_data, size_t cleartext_size,
                  char** encrypted_data, size_t* encrypted_size)
 {
-    //MPEOS_LOG(MPE_LOG_DEBUG, MPE_MOD_HN, "%s NOT IMPLEMENTED\n", __FUNCTION__);
-
     return -1;
 }
 
 DTCPIP_STUB(int, dtcpip_src_free, char* encrypted_data)
 {
-    //MPEOS_LOG(MPE_LOG_DEBUG, MPE_MOD_HN, "%s NOT IMPLEMENTED\n", __FUNCTION__);
-
     return -1;
 }
 
 DTCPIP_STUB(int, dtcpip_src_close,int session_handle)
 {
-    //MPEOS_LOG(MPE_LOG_DEBUG, MPE_MOD_HN, "%s NOT IMPLEMENTED\n", __FUNCTION__);
-
     return -1;
 }
 
 DTCPIP_STUB(int, dtcpip_snk_init, void)
 {
-    //MPEOS_LOG(MPE_LOG_DEBUG, MPE_MOD_HN, "%s NOT IMPLEMENTED\n", __FUNCTION__);
+    g_printf("%s NOT IMPLEMENTED\n", __FUNCTION__);
 
-    // need to return success so that hn init suceeds
     return TRUE;
 }
 
@@ -158,7 +150,7 @@ DTCPIP_STUB(int, dtcpip_snk_open,
                  char* ip_addr, unsigned short ip_port,
                  int *session_handle)
 {
-    //MPEOS_LOG(MPE_LOG_DEBUG, MPE_MOD_HN, "%s NOT IMPLEMENTED\n", __FUNCTION__);
+    g_printf("%s NOT IMPLEMENTED\n", __FUNCTION__);
 
     return -1;
 }
@@ -167,21 +159,17 @@ DTCPIP_STUB(int, dtcpip_snk_alloc_decrypt, int session_handle,
                  char* encrypted_data, size_t encrypted_size,
                  char** cleartext_data, size_t* cleartext_size)
 {
-    //MPEOS_LOG(MPE_LOG_DEBUG, MPE_MOD_HN, "%s NOT IMPLEMENTED\n", __FUNCTION__);
-
     return -1;
 }
 
 DTCPIP_STUB(int, dtcpip_snk_free, char* cleartext_data)
 {
-    //MPEOS_LOG(MPE_LOG_DEBUG, MPE_MOD_HN, "%s NOT IMPLEMENTED\n", __FUNCTION__);
-    
     return -1;
 }
 
 DTCPIP_STUB(int, dtcpip_snk_close, int session_handle)
 {
-    //MPEOS_LOG(MPE_LOG_DEBUG, MPE_MOD_HN, "%s NOT IMPLEMENTED\n", __FUNCTION__);
+    g_printf("%s NOT IMPLEMENTED\n", __FUNCTION__);
 
     return -1;
 }
@@ -195,10 +183,10 @@ DTCPIP_STUB(int, dtcpip_snk_close, int session_handle)
  */
 gboolean rui_dtcpip_init()
 {
-	printf("rui_dtcpip_init() called\n");
+    g_printf("%s - called\n", __FUNCTION__);
 
     gboolean ret_code = FALSE;
-    const char *dll_path = NULL;
+    const gchar *dll_path = NULL;
 
     g_dtcpip_ftable = (dtcpip_typed_functions_t*) &untyped_functions;
 
@@ -210,15 +198,15 @@ gboolean rui_dtcpip_init()
     }
     else
     {
-    	printf("%s - opening dll using path: %s\n", __FUNCTION__, dll_path);
+        g_printf("%s - opening dll using path: %s\n", __FUNCTION__, dll_path);
         ret_code = rui_dlmodOpen(dll_path, &dtcp_dll);
         if (ret_code == TRUE)
         {
-            int          i = 0;
-            int num_funcs = -1;
+            gint i = 0;
+            gint num_funcs = -1;
 
-            printf("%s - successfully loaded DTCP/IP library from \"%s\".\n",
-            		__FUNCTION__, dll_path);
+            g_printf("%s - successfully loaded DTCP/IP library from \"%s\".\n",
+                    __FUNCTION__, dll_path);
 
             // First check that all functions defined in the structure can
             // be located in the supplied DLL.
@@ -229,13 +217,13 @@ gboolean rui_dtcpip_init()
                 ret_code = rui_dlmodGetSymbol(dtcp_dll, untyped_functions[i].name, (void **) &func);
                 if (ret_code == TRUE)
                 {
-                    printf("%s - successfully located function \"%s\".\n",
-                        __FUNCTION__, untyped_functions[i].name);
+                    g_printf("%s - successfully located function \"%s\".\n",
+                            __FUNCTION__, untyped_functions[i].name);
                 }
                 else
                 {
                     g_printerr("%s - unable to locate function \"%s\".\n",
-                    		__FUNCTION__, untyped_functions[i].name);
+                            __FUNCTION__, untyped_functions[i].name);
                     break;
                 }
             }
@@ -245,7 +233,8 @@ gboolean rui_dtcpip_init()
             {
                 for (i = 0; i < num_funcs; i++)
                 {
-                    ret_code = rui_dlmodGetSymbol(dtcp_dll, untyped_functions[i].name, (void **) &untyped_functions[i].func);
+                    ret_code = rui_dlmodGetSymbol(dtcp_dll, untyped_functions[i].name,
+                            (void **) &untyped_functions[i].func);
                     if (ret_code != TRUE)
                     {
                         g_printerr("%s - unable to get symbol \"%s\".\n",
@@ -258,7 +247,7 @@ gboolean rui_dtcpip_init()
         else
         {
             g_printerr("%s - unable to load DTCP/IP library from \"%s\": Shared Library error %d.\n",
-            		__FUNCTION__, dll_path, ret_code);
+                    __FUNCTION__, dll_path, ret_code);
             return FALSE;
         }
     }
@@ -269,70 +258,36 @@ gboolean rui_dtcpip_init()
         return FALSE;
     }
 
-    char dtcp_storage[256];
-    int    storage_len = 0;
+    gchar dtcp_storage[256];
+    gint storage_len = 0;
 
-    const char* dtcp_storage_env = getenv(RUIH_GST_DTCP_KEY_STORAGE_ENV);
+    const gchar* dtcp_storage_env = getenv(RUIH_GST_DTCP_KEY_STORAGE_ENV);
     if (dtcp_storage_env == NULL)
     {
-        printf("%s - %s not defined.\n", __FUNCTION__, RUIH_GST_DTCP_KEY_STORAGE_ENV);
-        const char *last_slash = strrchr(dll_path, '/');
+        g_printf("%s - %s not defined.\n", __FUNCTION__, RUIH_GST_DTCP_KEY_STORAGE_ENV);
+        const gchar *last_slash = strrchr(dll_path, '/');
         if (last_slash != NULL)
         {
             storage_len = (int) (last_slash - dll_path);
-            //ret_code = mpeos_memAllocP(MPE_MEM_HN, storage_len + 1, (void **) &dtcp_storage);
-            //if (ret_code != MPE_SUCCESS)
-            //{
-            //    MPEOS_LOG(MPE_LOG_ERROR, MPE_MOD_HN, "%s - failed to allocate memory to copy \"%s\".\n",
-            //            __FUNCTION__, DLL_PATH_ENV);
-            //    return MPE_HN_ERR_OS_FAILURE;
-            //}
-            //else
-            //{
-                memcpy(dtcp_storage, dll_path, storage_len);
-                dtcp_storage[storage_len] = '\0';
-            //}
+            memcpy(dtcp_storage, dll_path, storage_len);
+            dtcp_storage[storage_len] = '\0';
         }
         else
         {
             storage_len = 1;
-            /*
-            ret_code = mpeos_memAllocP(MPE_MEM_HN, 2, (void **) &dtcp_storage);
-            if (ret_code != MPE_SUCCESS)
-            {
-                MPEOS_LOG(MPE_LOG_ERROR, MPE_MOD_HN, "%s - failed to allocate memory to copy and terminate \"%s\".\n",
-                        __FUNCTION__, DLL_PATH_ENV);
-                return MPE_HN_ERR_OS_FAILURE;
-            }
-            else
-            {
-            */
-                dtcp_storage[0] = '.';
-                dtcp_storage[1] = '\0';
-            //}
+            dtcp_storage[0] = '.';
+            dtcp_storage[1] = '\0';
         }
     }
     else
     {
         storage_len = strlen(dtcp_storage_env);
-        /*
-        ret_code = mpeos_memAllocP(MPE_MEM_HN, storage_len + 1, (void **) &dtcp_storage);
-        if (ret_code != MPE_SUCCESS)
-        {
-            MPEOS_LOG(MPE_LOG_ERROR, MPE_MOD_HN, "%s - failed to allocate memory to copy env \"%s\".\n",
-                    __FUNCTION__, DTCP_STORAGE_ENV);
-            return MPE_HN_ERR_OS_FAILURE;
-        }
-        else
-        {
-        */
-            memcpy(dtcp_storage, dtcp_storage_env, storage_len);
-            dtcp_storage[storage_len] = '\0';
-        //}
+        memcpy(dtcp_storage, dtcp_storage_env, storage_len);
+        dtcp_storage[storage_len] = '\0';
     }
 
-    int result = 0;
-    printf("%s - using \"%s\" for DTCP/IP library storage.\n",
+    gint result = 0;
+    g_printf("%s - using \"%s\" for DTCP/IP library storage.\n",
             __FUNCTION__, dtcp_storage);
     result = g_dtcpip_ftable->dtcpip_cmn_init(dtcp_storage);
     if (result != 0)
@@ -342,9 +297,7 @@ gboolean rui_dtcpip_init()
         return FALSE;
     }
 
-    //mpeos_memFreeP(MPE_MEM_HN, (void *) dtcp_storage);
-
-    printf("%s - DTCP/IP enabled.\n", __FUNCTION__);
+    g_printf("%s - DTCP/IP enabled.\n", __FUNCTION__);
 
     return TRUE;
 }

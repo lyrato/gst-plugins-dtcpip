@@ -62,32 +62,30 @@ G_BEGIN_DECLS
 #define GST_IS_DTCPIP_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_DTCPIP))
 
-typedef struct _GstDtcpIp      GstDtcpIp;
+typedef struct _GstDtcpIp GstDtcpIp;
 typedef struct _GstDtcpIpClass GstDtcpIpClass;
 
-struct _GstDtcpIp
-{
-  GstElement element;
+struct _GstDtcpIp {
+    GstElement element;
 
-  GstPad *sinkpad, *srcpad;
+    GstPad *sinkpad, *srcpad;
 
-  // Properties
-  gboolean dtcp_disabled;
-  gchar *dtcp1host;
-  guint dtcp1port;
-  gchar *dtcpip_storage;
-  gchar *dtcpip_library;
+    // Properties
+    gboolean dtcp_disabled;
+    gchar *dtcp1host;
+    guint dtcp1port;
+    gchar *dtcpip_storage;
+    gchar *dtcpip_library;
 
-  // DTCP Instance variable
-  int session_handle;
+    // DTCP Instance variable
+    int session_handle;
 };
 
-struct _GstDtcpIpClass
-{
-  GstElementClass parent_class;
+struct _GstDtcpIpClass {
+    GstElementClass parent_class;
 };
 
-GType gst_dtcpip_get_type (void);
+GType gst_dtcpip_get_type(void);
 
 G_END_DECLS
 

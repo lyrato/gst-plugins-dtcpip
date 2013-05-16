@@ -1,7 +1,7 @@
 // COPYRIGHT_BEGIN
 //  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER
 //
-//  Copyright (C) 2008-2009, Cable Television Laboratories, Inc.
+//  Copyright (C) 2013 Cable Television Laboratories, Inc.
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -39,15 +39,14 @@ static void **g_rui_ftable; /* RUI Global Function Table */
  * <i>rui_dlmodInit</i>
  *
  * Initialize the rui DLL support with the rui global function table
- * (rui_ftable).  This populates the porting layer with the rui global
- * function table pointer so it can be passed to library modules during
- * intialization of the modules.
+ * (rui_ftable).  This populates the rui global function table pointer
+ * so it can be passed to library modules during intialization of the modules.
  *
  * @param rui_ftable pointer to rui global function table.
  */
 void rui_dlmodInit(void **rui_ftable)
 {
-    printf("%s - assigning function table\n", __FUNCTION__);
+    g_printf("%s - assigning function table\n", __FUNCTION__);
     g_rui_ftable = rui_ftable;
 }
 
@@ -58,8 +57,6 @@ void rui_dlmodInit(void **rui_ftable)
  * be used to get a pointer to the calling module (null name).  This
  * initialization interface returns a ID/handle for association of the
  * library module and subsequent symbol lookup.
- *
- * TODO - identify the Linux module-loading mechanism
  *
  * In the Linux implementation, the module is loaded using TBD.
  * Then the shared library symbol table is acquired via a MDT entry in
@@ -75,16 +72,14 @@ gboolean rui_dlmodOpen(const char *name, rui_Dlmod *dlmodId)
 {
     printf("%s - initializing\n", __FUNCTION__);
 
-    //void (*mpelib_init)(void**); /* Library init routine. */
-    void *linuxMod;
-
+    void *linuxMod =  NULL;
     if (NULL == name)
     {
         g_printerr("%s - module name is NULL!\n", __FUNCTION__);
         return FALSE;
     }
 
-    printf("%s - opening module name: \"%s\"\n", __FUNCTION__, name);
+    g_printf("%s - opening module name: \"%s\"\n", __FUNCTION__, name);
 
     /*
      * open the dynamic library in Linux.
@@ -100,26 +95,8 @@ gboolean rui_dlmodOpen(const char *name, rui_Dlmod *dlmodId)
     }
     *dlmodId = linuxMod;
 
-    printf("%s - SUCCESS! Handle = %p\n", __FUNCTION__, *dlmodId);
+    g_printf("%s - SUCCESS! Handle = %p\n", __FUNCTION__, *dlmodId);
 
-    /*
-     * The library's rui initialization entry point is optional.
-     * If it exists, it must be of the form ruilib_init_[name],
-     * where "name" corresponds to the name of the library.
-     */
-    /*
-    if (TRUE == rui_dlmodGetSymbol(*dlmodId, "mpelib_init", (void**) &mpelib_init))
-    {
-        printf("%s - invoking library rui initialization function: 'mpelib_init' @ 0x%p\n",
-                __FUNCTION__, mpelib_init);
-        (*mpelib_init)(g_rui_ftable);
-    }
-    else
-    {
-        printf("%s - NOT invoking library rui initialization function: 'ruilib_init' (symbol not found)\n",
-        		__FUNCTION__);
-    }
-    */
     return TRUE;
 }
 
@@ -135,10 +112,10 @@ gboolean rui_dlmodOpen(const char *name, rui_Dlmod *dlmodId)
  *     to perform the search/lookup.
  * @param value is a void pointer for returning the associated value of
  * the target symbol.
- * @return FALSE if the create fails, otherwise TRUE is returned.
+ * @return FALSE if fails to get symbol, otherwise TRUE is returned.
  */
 gboolean rui_dlmodGetSymbol(rui_Dlmod dlmodId, const char *symbol,
-        					void **value)
+                            void **value)
 {
     char *checkRet = (char *) 0;
 
@@ -153,16 +130,12 @@ gboolean rui_dlmodGetSymbol(rui_Dlmod dlmodId, const char *symbol,
     checkRet = dlerror();
     if (NULL != checkRet)
     {
-        /*
-         * Changed from _ERROR to _DEBUG to eliminate "noise".
-         * The caller should log a complaint, if appropriate.
-         */
         g_printerr("%s - failed to find symbol \"%s\" [dll_handle %p].  Reason: %s\n",
                 __FUNCTION__, symbol, dlmodId, checkRet);
         return FALSE;
     }
 
-    printf("%s - found symbol \"%s\"\n", __FUNCTION__, symbol);
+    g_printf("%s - found symbol \"%s\"\n", __FUNCTION__, symbol);
 
     return TRUE;
 }
@@ -178,7 +151,7 @@ gboolean rui_dlmodGetSymbol(rui_Dlmod dlmodId, const char *symbol,
  */
 gboolean rui_dlmodClose(rui_Dlmod dlmodId)
 {
-    printf("%s - %p\n", __FUNCTION__, dlmodId);
+    g_printf("%s - %p\n", __FUNCTION__, dlmodId);
 
     /* close the DLL in Linux. */
     dlclose(dlmodId);
