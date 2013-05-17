@@ -216,7 +216,7 @@ gboolean rui_dtcpip_init()
                 ret_code = rui_dlmodGetSymbol(dtcp_dll, untyped_functions[i].name, (void **) &func);
                 if (ret_code == TRUE)
                 {
-                    g_message("%s - successfully located function \"%s\".\n",
+                    g_debug("%s - successfully located function \"%s\".\n",
                             __FUNCTION__, untyped_functions[i].name);
                 }
                 else
@@ -257,8 +257,8 @@ gboolean rui_dtcpip_init()
         return FALSE;
     }
 
-    gchar dtcp_storage[1024];
-    gint storage_len = 0;
+    gpointer dtcp_storage;
+    gsize storage_len = 0;
 
     const gchar* dtcp_storage_env = getenv(RUIH_GST_DTCP_KEY_STORAGE_ENV);
     if (dtcp_storage_env == NULL)
@@ -268,33 +268,39 @@ gboolean rui_dtcpip_init()
         if (last_slash != NULL)
         {
             storage_len = (int) (last_slash - dll_path);
+            dtcp_storage = g_malloc0(storage_len +1);
             memcpy(dtcp_storage, dll_path, storage_len);
-            dtcp_storage[storage_len] = '\0';
+            ((gchar*)dtcp_storage)[storage_len] = '\0';
         }
         else
         {
             storage_len = 1;
-            dtcp_storage[0] = '.';
-            dtcp_storage[1] = '\0';
+            dtcp_storage = g_malloc0(storage_len +1);
+            ((gchar*)dtcp_storage)[0] = '.';
+            ((gchar*)dtcp_storage)[1] = '\0';
         }
     }
     else
     {
         storage_len = strlen(dtcp_storage_env);
+        dtcp_storage = g_malloc0(storage_len +1);
         memcpy(dtcp_storage, dtcp_storage_env, storage_len);
-        dtcp_storage[storage_len] = '\0';
+        ((gchar*)dtcp_storage)[storage_len] = '\0';
     }
 
     gint result = 0;
     g_message("%s - using \"%s\" for DTCP/IP library storage.\n",
-            __FUNCTION__, dtcp_storage);
+            __FUNCTION__, (gchar*)dtcp_storage);
     result = g_dtcpip_ftable->dtcpip_cmn_init(dtcp_storage);
     if (result != 0)
     {
         g_error("%s - dtcpip_cmn_init() failed with %d.\n",
                 __FUNCTION__, result);
+        g_free(dtcp_storage);
         return FALSE;
     }
+
+    g_free(dtcp_storage);
 
     g_message("%s - DTCP/IP enabled.\n", __FUNCTION__);
 

@@ -78,7 +78,7 @@ gboolean rui_dlmodOpen(const char *name, rui_Dlmod *dlmodId)
         return FALSE;
     }
 
-    g_message("%s - opening module name: \"%s\"\n", __FUNCTION__, name);
+    g_debug("%s - opening module name: \"%s\"\n", __FUNCTION__, name);
 
     /*
      * open the dynamic library in Linux.
@@ -94,7 +94,7 @@ gboolean rui_dlmodOpen(const char *name, rui_Dlmod *dlmodId)
     }
     *dlmodId = linuxMod;
 
-    g_message("%s - SUCCESS! Handle = %p\n", __FUNCTION__, *dlmodId);
+    g_debug("%s - SUCCESS! Handle = %p\n", __FUNCTION__, *dlmodId);
 
     return TRUE;
 }
