@@ -28,7 +28,8 @@
 //  to this code shall be as set forth therein. No license is granted hereunder
 //  for any other purpose.
 // COPYRIGHT_END
-#if !defined(_RUI_DLL_H)
+
+#ifndef _RUI_DLL_H_
 #define _RUI_DLL_H
 
 #include <gst/gst.h>
@@ -66,7 +67,7 @@ void rui_dlmodInit(void **rui_ftable);
  * calling module (null name).  This initialization interface returns a ID/handle 
  * for association of the library module and subsequent symbol lookup.
  *
- * @param name is a pointer to the name of the module to open.
+ * @param name is the name of the module to open.
  * @param dlmodId is a pointer for returning the identifier of the opened module.
  * @return FALSE if the create fails, otherwise TRUE is returned.
  */
@@ -89,7 +90,7 @@ gboolean rui_dlmodClose(rui_Dlmod dlmodId);
  * ID/handle returned from the "open" operation.
  *
  * @param dlmodId is the identifier of the target module.
- * @param symbol is a pointer to a name string for the symbol for which to perform 
+ * @param symbol is string containing name of the symbol for which to perform
  *          the search/lookup.
  * @param value is a void pointer for returning the associated value of the target
  *          symbol.

@@ -78,7 +78,7 @@ struct _GstDtcpIp {
     gchar *dtcpip_library;
 
     // DTCP Instance variable
-    int session_handle;
+    gint session_handle;
 };
 
 struct _GstDtcpIpClass {

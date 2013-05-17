@@ -39,7 +39,8 @@
 #define DTCPIP_IS_SESSION_VALID(h) ((h)>0)
 
 #define DTCPIP_SUCCESS (0)
-// dtcpip (CableLabs) error code range -1 through -4#include <gst/gst.h>
+// dtcpip (CableLabs) error code range -1 through -4
+// see Cablelabs dtcpip library functions for more detail
 
 // DTCP (Intel) error code range is below -100
 #define IS_DTCPIP_SUCCESS(ret_val) ((ret_val)>=0)

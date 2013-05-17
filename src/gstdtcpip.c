@@ -55,10 +55,6 @@
 #endif
 
 #include <gst/gst.h>
-#include <string.h>
-#include <stdio.h>
-#include <dlfcn.h>    /* dlopen(3), dlerror(3), dlsym(3), dlclose(3) */
-
 #include "gstdtcpip.h"
 #include "rui_dtcpip.h"
 
@@ -131,7 +127,6 @@ static void gst_dtcpip_class_init(GstDtcpIpClass * klass) {
                     "Directory that contains client's keys",
                     "/media/truecrypt1/dll/test_keys", G_PARAM_READABLE));
 
-#ifndef GSTREAMER_010
     gst_element_class_set_details_simple(gstelement_class, "DTCP-IP decryption",
             "Decrypt/DTCP", // see docs/design/draft-klass.txt
             "Decrypts link-encrypted DTCP-IP DLNA content",
@@ -141,7 +136,6 @@ static void gst_dtcpip_class_init(GstDtcpIpClass * klass) {
             gst_static_pad_template_get(&src_factory));
     gst_element_class_add_pad_template(gstelement_class,
             gst_static_pad_template_get(&sink_factory));
-#endif
 
     gstelement_class->change_state = gst_dtcpip_change_state;
 }
@@ -198,7 +192,7 @@ static void gst_dtcpip_init(GstDtcpIp * filter) {
     filter->session_handle = -1;
 
 #ifdef DEBUG_SAVE_BUFFER_CONTENT
-    g_debugBufferFile = fopen(g_debugBufferFileName, "wb");
+    g_debugBufferFile = g_fopen(g_debugBufferFileName, "wb");
 #endif
 
 }
@@ -411,7 +405,7 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
         outbuf = gst_buffer_new_and_alloc(cleartext_size);
     }
 
-    // 4. Set the new buffer's data to be the decrypted cleartest
+    // 4. Set the new buffer's data to be the decrypted data
     if (!filter->dtcp_disabled) {
         gst_buffer_fill(outbuf, 0, (guint8*) cleartext_data, cleartext_size);
         gst_buffer_map(outbuf, &map, GST_MAP_READ);
