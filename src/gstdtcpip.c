@@ -381,7 +381,7 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
 
     filter = GST_DTCPIP (parent);
     gst_buffer_map(inbuf, &map, GST_MAP_READ);
-    GST_LOG_OBJECT(filter, "input buffer %p, %u bytes", map.data, map.size);
+    GST_LOG_OBJECT(filter, "input buffer %p, %zu bytes", map.data, map.size);
 
     // 1. set our encrypted data pointer
     encrypted_data = (gchar*) map.data;
@@ -409,7 +409,7 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
     if (!filter->dtcp_disabled) {
         gst_buffer_fill(outbuf, 0, (guint8*) cleartext_data, cleartext_size);
         gst_buffer_map(outbuf, &map, GST_MAP_READ);
-        GST_LOG_OBJECT(filter, "output buffer %p, %u bytes", map.data,
+        GST_LOG_OBJECT(filter, "output buffer %p, %zu bytes", map.data,
                 map.size);
     }
 

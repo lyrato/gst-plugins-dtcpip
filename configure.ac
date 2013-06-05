@@ -12,7 +12,9 @@ AC_CONFIG_SRCDIR([src/gstdtcpip.c])
 AC_CONFIG_HEADERS([config.h])
 
 dnl required version of automake
-AM_INIT_AUTOMAKE([1.10])
+AM_INIT_AUTOMAKE([1.11])
+
+AM_SILENT_RULES([yes])
 
 dnl enable mainainer mode by default
 AM_MAINTAINER_MODE([enable])
@@ -62,7 +64,7 @@ PKG_CHECK_MODULES(GST, [
 dnl check if compiler understands -Wall (if yes, add -Wall to GST_CFLAGS)
 AC_MSG_CHECKING([to see if compiler understands -Wall])
 save_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -Wall"
+CFLAGS="$CFLAGS -Wall -Werror"
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([ ], [ ])], [
   GST_CFLAGS="$GST_CFLAGS -Wall"
   AC_MSG_RESULT([yes])
