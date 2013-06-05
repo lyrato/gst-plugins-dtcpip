@@ -12,7 +12,9 @@ AC_CONFIG_SRCDIR([src/gstdtcpip.c])
 AC_CONFIG_HEADERS([config.h])
 
 dnl required version of automake
-AM_INIT_AUTOMAKE([1.10])
+AM_INIT_AUTOMAKE([1.11])
+
+AM_SILENT_RULES([yes])
 
 dnl enable mainainer mode by default
 AM_MAINTAINER_MODE([enable])
