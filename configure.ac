@@ -12,7 +12,7 @@ AC_CONFIG_SRCDIR([src/gstdtcpip.c])
 AC_CONFIG_HEADERS([config.h])
 
 dnl required version of automake
-AM_INIT_AUTOMAKE([1.11])
+AM_INIT_AUTOMAKE([1.11 subdir-objects])
 
 AM_SILENT_RULES([yes])
 
@@ -84,6 +84,6 @@ dnl set proper LDFLAGS for plugins
 GST_PLUGIN_LDFLAGS='-module -avoid-version -export-symbols-regex [_]*\(gst_\|Gst\|GST_\).*'
 AC_SUBST(GST_PLUGIN_LDFLAGS)
 
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 
