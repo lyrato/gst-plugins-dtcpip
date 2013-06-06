@@ -31,7 +31,7 @@
 #include <glib.h>
 #include <dlfcn.h>    /* dlopen(3), dlerror(3), dlsym(3), dlclose(3) */
 
-#include <rui_dll.h>
+#include "rui_dll.h"
 
 static void **g_rui_ftable; /* RUI Global Function Table */
 
