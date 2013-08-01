@@ -446,12 +446,6 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
     return gfr;
 }
 
-/*
- * The following section supports the GStreamer auto plugging infrastructure.
- * Set to 0 if this is done on a package level using (ie gstelements.[hc])
- */
-#if 1
-
 /* entry point to initialize the plug-in
  * initialize the plug-in itself
  * register the element factories and other features
@@ -468,15 +462,6 @@ static gboolean dtcpip_init(GstPlugin * dtcpip) {
             GST_TYPE_DTCPIP);
 }
 
-/* PACKAGE: this is usually set by autotools depending on some _INIT macro
- * in configure.ac and then written into and defined in config.h, but we can
- * just set it ourselves here in case someone doesn't use autotools to
- * compile this code. GST_PLUGIN_DEFINE needs PACKAGE to be defined.
- */
-#ifndef PACKAGE
-#define PACKAGE "dtcpip"
-#endif
-
 /* gstreamer looks for this structure to register the dtcpip plugin
  *
  * exchange the string 'Template dtcpip' with your dtcpip description
@@ -484,17 +469,11 @@ static gboolean dtcpip_init(GstPlugin * dtcpip) {
 GST_PLUGIN_DEFINE (
         GST_VERSION_MAJOR,
         GST_VERSION_MINOR,
-#ifdef GSTREAMER_010
-        "dtcpip",
-#else
         dtcpip,
-#endif
-        "DTCP (Digital Transmission Content Protection) plugins",
+        "DTCP (Digital Transmission Content Protection) plugin",
         (GstPluginInitFunc)dtcpip_init,
         VERSION,
         "LGPL",
         "CableLabs RUI-H RI",
         "http://www.cablelabs.com/"
 )
-
-#endif
