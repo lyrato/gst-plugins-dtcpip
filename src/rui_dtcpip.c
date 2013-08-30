@@ -29,6 +29,9 @@
 #include "rui_dtcpip.h"
 #include "rui_dll.h"
 
+GST_DEBUG_CATEGORY_STATIC (rui_dtcpip_debug);
+#define GST_CAT_DEFAULT rui_dtcpip_debug
+
 struct dtcpip_untyped_function_entry_s
 {
     char *name;
@@ -90,26 +93,26 @@ static rui_Dlmod dtcp_dll = (rui_Dlmod) 0;
 
 DTCPIP_STUB(int, dtcpip_cmn_init, const char* storage_path)
 {
-    g_debug("%s NOT IMPLEMENTED\n", __FUNCTION__);
+    GST_DEBUG("Not implemented");
 
     return TRUE;
 }
 
 DTCPIP_STUB(void, dtcpip_cmn_get_version, char* string, size_t length)
 {
-    g_debug("%s NOT IMPLEMENTED\n", __FUNCTION__);
+    GST_DEBUG("Not implemented");
 }
 
 DTCPIP_STUB(int, dtcpip_src_init, unsigned short dtcp_port)
 {
-    g_debug("%s NOT IMPLEMENTED\n", __FUNCTION__);
+    GST_DEBUG("Not implemented");
 
     return TRUE;
 }
 
 DTCPIP_STUB(int, dtcpip_src_open, int* session_handle, int is_audio_only)
 {
-    g_debug("%s NOT IMPLEMENTED\n", __FUNCTION__);
+    GST_DEBUG("Not implemented");
 
     return -1;
 }
@@ -134,7 +137,7 @@ DTCPIP_STUB(int, dtcpip_src_close,int session_handle)
 
 DTCPIP_STUB(int, dtcpip_snk_init, void)
 {
-    g_debug("%s NOT IMPLEMENTED\n", __FUNCTION__);
+    GST_DEBUG("Not implemented");
 
     return TRUE;
 }
@@ -143,7 +146,7 @@ DTCPIP_STUB(int, dtcpip_snk_open,
                  char* ip_addr, unsigned short ip_port,
                  int *session_handle)
 {
-    g_debug("%s NOT IMPLEMENTED\n", __FUNCTION__);
+    GST_DEBUG("Not implemented");
 
     return -1;
 }
@@ -162,7 +165,7 @@ DTCPIP_STUB(int, dtcpip_snk_free, char* cleartext_data)
 
 DTCPIP_STUB(int, dtcpip_snk_close, int session_handle)
 {
-    g_debug("%s NOT IMPLEMENTED\n", __FUNCTION__);
+    GST_DEBUG("Not implemented");
 
     return -1;
 }
@@ -176,7 +179,10 @@ DTCPIP_STUB(int, dtcpip_snk_close, int session_handle)
  */
 gboolean rui_dtcpip_init()
 {
-    g_debug("%s - called\n", __FUNCTION__);
+    GST_DEBUG_CATEGORY_INIT (rui_dtcpip_debug, "rui_dtcpip", 0,
+            "DTCP/IP Shared Library diagnostics");
+
+    GST_DEBUG("called");
 
     gboolean ret_code = FALSE;
     const gchar *dll_path = NULL;
@@ -186,20 +192,19 @@ gboolean rui_dtcpip_init()
     dll_path = getenv(RUIH_GST_DTCP_DLL_ENV);
     if (dll_path == NULL)
     {
-        g_error("%s - dtcp dll env var %s is NULL.\n", __FUNCTION__, RUIH_GST_DTCP_DLL_ENV);
+        GST_ERROR("dtcp dll env var %s is NULL", RUIH_GST_DTCP_DLL_ENV);
         return FALSE;
     }
     else
     {
-        g_message("%s - opening dll using path: %s\n", __FUNCTION__, dll_path);
+        GST_INFO("opening dll using path: %s", dll_path);
         ret_code = rui_dlmodOpen(dll_path, &dtcp_dll);
         if (ret_code == TRUE)
         {
             gint i = 0;
             gint num_funcs = -1;
 
-            g_message("%s - successfully loaded DTCP/IP library from \"%s\".\n",
-                    __FUNCTION__, dll_path);
+            GST_INFO("successfully loaded DTCP/IP library from \"%s\".", dll_path);
 
             // First check that all functions defined in the structure can
             // be located in the supplied DLL.Cleaned up tab/spaces in all files
@@ -210,13 +215,11 @@ gboolean rui_dtcpip_init()
                 ret_code = rui_dlmodGetSymbol(dtcp_dll, untyped_functions[i].name, (void **) &func);
                 if (ret_code == TRUE)
                 {
-                    g_debug("%s - successfully located function \"%s\".\n",
-                            __FUNCTION__, untyped_functions[i].name);
+                    GST_DEBUG("successfully located function \"%s\".", untyped_functions[i].name);
                 }
                 else
                 {
-                    g_error("%s - unable to locate function \"%s\".\n",
-                            __FUNCTION__, untyped_functions[i].name);
+                    GST_ERROR("unable to locate function \"%s\".", untyped_functions[i].name);
                     break;
                 }
             }
@@ -230,8 +233,7 @@ gboolean rui_dtcpip_init()
                             (void **) &untyped_functions[i].func);
                     if (ret_code != TRUE)
                     {
-                        g_error("%s - unable to get symbol \"%s\".\n",
-                               __FUNCTION__, untyped_functions[i].name);
+                        GST_ERROR("unable to get symbol \"%s\".", untyped_functions[i].name);
                         return FALSE;
                     }
                 }
@@ -239,15 +241,15 @@ gboolean rui_dtcpip_init()
         }
         else
         {
-            g_error("%s - unable to load DTCP/IP library from \"%s\": Shared Library error %d.\n",
-                    __FUNCTION__, dll_path, ret_code);
+            GST_ERROR("unable to load DTCP/IP library from \"%s\": Shared Library error %d.",
+                    dll_path, ret_code);
             return FALSE;
         }
     }
 
     if (ret_code != TRUE)
     {
-        g_warning("%s - DTCP/IP disabled.\n", __FUNCTION__);
+        GST_WARNING("DTCP/IP disabled.");
         return FALSE;
     }
 
@@ -257,7 +259,7 @@ gboolean rui_dtcpip_init()
     const gchar* dtcp_storage_env = getenv(RUIH_GST_DTCP_KEY_STORAGE_ENV);
     if (dtcp_storage_env == NULL)
     {
-        g_message("%s - %s not defined.\n", __FUNCTION__, RUIH_GST_DTCP_KEY_STORAGE_ENV);
+        GST_INFO("%s not defined.", RUIH_GST_DTCP_KEY_STORAGE_ENV);
         const gchar *last_slash = strrchr(dll_path, '/');
         if (last_slash != NULL)
         {
@@ -283,20 +285,18 @@ gboolean rui_dtcpip_init()
     }
 
     gint result = 0;
-    g_message("%s - using \"%s\" for DTCP/IP library storage.\n",
-            __FUNCTION__, (gchar*)dtcp_storage);
+    GST_INFO("using \"%s\" for DTCP/IP library storage.", (gchar*)dtcp_storage);
     result = g_dtcpip_ftable->dtcpip_cmn_init(dtcp_storage);
     if (result != 0)
     {
-        g_error("%s - dtcpip_cmn_init() failed with %d.\n",
-                __FUNCTION__, result);
+        GST_ERROR("dtcpip_cmn_init() failed with %d.", result);
         g_free(dtcp_storage);
         return FALSE;
     }
 
     g_free(dtcp_storage);
 
-    g_message("%s - DTCP/IP enabled.\n", __FUNCTION__);
+    GST_INFO("DTCP/IP enabled.");
 
     return TRUE;
 }
