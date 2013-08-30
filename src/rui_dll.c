@@ -30,6 +30,9 @@
 
 static void **g_rui_ftable; /* RUI Global Function Table */
 
+GST_DEBUG_CATEGORY_STATIC (rui_dll_debug);
+#define GST_CAT_DEFAULT rui_dll_debug
+
 /**
  * <i>rui_dlmodInit</i>
  *
@@ -41,7 +44,10 @@ static void **g_rui_ftable; /* RUI Global Function Table */
  */
 void rui_dlmodInit(void **rui_ftable)
 {
-    g_message("%s - assigning function table\n", __FUNCTION__);
+    GST_DEBUG_CATEGORY_INIT (rui_dll_debug, "rui_dll", 0,
+            "DTCP/IP Shared Library diagnostics");
+
+    GST_INFO("Assigning function table");
     g_rui_ftable = rui_ftable;
 }
 
@@ -64,16 +70,16 @@ void rui_dlmodInit(void **rui_ftable)
  */
 gboolean rui_dlmodOpen(const char *name, rui_Dlmod *dlmodId)
 {
-    g_debug("%s - initializing\n", __FUNCTION__);
+    GST_DEBUG("Initializing");
 
     void *linuxMod =  NULL;
     if (NULL == name)
     {
-        g_error("%s - module name is NULL!\n", __FUNCTION__);
+        GST_ERROR("Module name is NULL!");
         return FALSE;
     }
 
-    g_debug("%s - opening module name: \"%s\"\n", __FUNCTION__, name);
+    GST_DEBUG("Opening module name: \"%s\".", name);
 
     /*
      * open the dynamic library in Linux.
@@ -84,12 +90,12 @@ gboolean rui_dlmodOpen(const char *name, rui_Dlmod *dlmodId)
     {
         // This log mesage is DEBUG level because some clients use this failure
         // as a test for library existence
-        g_error("%s() - dlopen('%s') failed: %s\n", __FUNCTION__, name, dlerror());
+        GST_ERROR("dlopen('%s') failed: %s", name, dlerror());
         return FALSE;
     }
     *dlmodId = linuxMod;
 
-    g_debug("%s - SUCCESS! Handle = %p\n", __FUNCTION__, *dlmodId);
+    GST_DEBUG("Success! Handle = %p", *dlmodId);
 
     return TRUE;
 }
@@ -124,12 +130,12 @@ gboolean rui_dlmodGetSymbol(rui_Dlmod dlmodId, const char *symbol,
     checkRet = dlerror();
     if (NULL != checkRet)
     {
-        g_error("%s - failed to find symbol \"%s\" [dll_handle %p].  Reason: %s\n",
-                __FUNCTION__, symbol, dlmodId, checkRet);
+        GST_ERROR("Failed to find symbol \"%s\" [dll_handle %p].  Reason: %s",
+                symbol, dlmodId, checkRet);
         return FALSE;
     }
 
-    g_debug("%s - found symbol \"%s\"\n", __FUNCTION__, symbol);
+    GST_DEBUG("Found symbol \"%s\".", symbol);
 
     return TRUE;
 }
@@ -145,7 +151,7 @@ gboolean rui_dlmodGetSymbol(rui_Dlmod dlmodId, const char *symbol,
  */
 gboolean rui_dlmodClose(rui_Dlmod dlmodId)
 {
-    g_debug("%s - %p\n", __FUNCTION__, dlmodId);
+    GST_DEBUG("Closing - %p", dlmodId);
 
     /* close the DLL in Linux. */
     dlclose(dlmodId);

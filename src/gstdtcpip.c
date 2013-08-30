@@ -430,7 +430,7 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
 #ifdef DEBUG_SAVE_BUFFER_CONTENT
     if (fwrite(map.data, map.size, 1, g_debugBufferFile) != 1)
     {
-        GST_WARNING_OBJECT(filter, "Failed to write %u bytes to debug file\n", cleartext_size);
+        GST_WARNING_OBJECT(filter, "Failed to write %u bytes to debug file", cleartext_size);
     }
 #endif
 
