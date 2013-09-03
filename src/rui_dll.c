@@ -30,8 +30,8 @@
 
 static void **g_rui_ftable; /* RUI Global Function Table */
 
-GST_DEBUG_CATEGORY_STATIC (rui_dll_debug);
-#define GST_CAT_DEFAULT rui_dll_debug
+GST_DEBUG_CATEGORY_EXTERN(gst_dtcpip_debug);
+#define GST_CAT_DEFAULT gst_dtcpip_debug
 
 /**
  * <i>rui_dlmodInit</i>
@@ -44,10 +44,8 @@ GST_DEBUG_CATEGORY_STATIC (rui_dll_debug);
  */
 void rui_dlmodInit(void **rui_ftable)
 {
-    GST_DEBUG_CATEGORY_INIT (rui_dll_debug, "rui_dll", 0,
-            "DTCP/IP Shared Library diagnostics");
+    GST_DEBUG("Assigning function table");
 
-    GST_INFO("Assigning function table");
     g_rui_ftable = rui_ftable;
 }
 

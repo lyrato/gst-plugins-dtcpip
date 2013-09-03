@@ -29,8 +29,8 @@
 #include "rui_dtcpip.h"
 #include "rui_dll.h"
 
-GST_DEBUG_CATEGORY_STATIC (rui_dtcpip_debug);
-#define GST_CAT_DEFAULT rui_dtcpip_debug
+GST_DEBUG_CATEGORY_EXTERN(gst_dtcpip_debug);
+#define GST_CAT_DEFAULT gst_dtcpip_debug
 
 struct dtcpip_untyped_function_entry_s
 {
@@ -179,9 +179,6 @@ DTCPIP_STUB(int, dtcpip_snk_close, int session_handle)
  */
 gboolean rui_dtcpip_init()
 {
-    GST_DEBUG_CATEGORY_INIT (rui_dtcpip_debug, "rui_dtcpip", 0,
-            "DTCP/IP Shared Library diagnostics");
-
     GST_DEBUG("called");
 
     gboolean ret_code = FALSE;

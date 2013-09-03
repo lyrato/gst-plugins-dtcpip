@@ -61,8 +61,8 @@
 // Uncomment to have output buffers saved to file
 //#define DEBUG_SAVE_BUFFER_CONTENT
 
+GST_DEBUG_CATEGORY(gst_dtcpip_debug);
 #define GST_CAT_DEFAULT gst_dtcpip_debug
-GST_DEBUG_CATEGORY_STATIC(GST_CAT_DEFAULT);
 
 enum {
     PROP_0, PROP_DTCP1HOST, PROP_DTCP1PORT, PROP_DTCPIP_STORAGE
@@ -146,6 +146,8 @@ static void gst_dtcpip_class_init(GstDtcpIpClass * klass) {
  * initialize instance structure
  */
 static void gst_dtcpip_init(GstDtcpIp * filter) {
+    GST_DEBUG_OBJECT (filter, "Initializing");
+
     // Initialize sink pad
     filter->sinkpad = gst_pad_new_from_static_template(&sink_factory, "sink");
 
@@ -455,7 +457,7 @@ static gboolean dtcpip_init(GstPlugin * dtcpip) {
      *
      * exchange the string 'Template ' with your description
      */
-    GST_DEBUG_CATEGORY_INIT(GST_CAT_DEFAULT, "dtcpip", 0,
+    GST_DEBUG_CATEGORY_INIT(gst_dtcpip_debug, "dtcpip", 0,
             "DTCP-IP library diagnostic output");
 
     return gst_element_register(dtcpip, "dtcpip", GST_RANK_NONE,
