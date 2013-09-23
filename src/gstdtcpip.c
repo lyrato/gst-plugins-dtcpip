@@ -419,13 +419,13 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
     if (!filter->dtcp_disabled) {
         gfr = gst_pad_push(filter->srcpad, outbuf);
         if (gfr != GST_FLOW_OK) {
-            GST_ERROR_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
+            GST_LOG_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
         }
     } else {
         // Not doing any encryption so just push in buffer through
         gfr = gst_pad_push(filter->srcpad, inbuf);
         if (gfr != GST_FLOW_OK) {
-            GST_ERROR_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
+            GST_LOG_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
         }
     }
 
