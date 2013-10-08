@@ -61,8 +61,8 @@
 // Uncomment to have output buffers saved to file
 //#define DEBUG_SAVE_BUFFER_CONTENT
 
+GST_DEBUG_CATEGORY(gst_dtcpip_debug);
 #define GST_CAT_DEFAULT gst_dtcpip_debug
-GST_DEBUG_CATEGORY_STATIC(GST_CAT_DEFAULT);
 
 enum {
     PROP_0, PROP_DTCP1HOST, PROP_DTCP1PORT, PROP_DTCPIP_STORAGE
@@ -146,6 +146,8 @@ static void gst_dtcpip_class_init(GstDtcpIpClass * klass) {
  * initialize instance structure
  */
 static void gst_dtcpip_init(GstDtcpIp * filter) {
+    GST_DEBUG_OBJECT (filter, "Initializing");
+
     // Initialize sink pad
     filter->sinkpad = gst_pad_new_from_static_template(&sink_factory, "sink");
 
@@ -417,20 +419,20 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
     if (!filter->dtcp_disabled) {
         gfr = gst_pad_push(filter->srcpad, outbuf);
         if (gfr != GST_FLOW_OK) {
-            GST_ERROR_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
+            GST_LOG_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
         }
     } else {
         // Not doing any encryption so just push in buffer through
         gfr = gst_pad_push(filter->srcpad, inbuf);
         if (gfr != GST_FLOW_OK) {
-            GST_ERROR_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
+            GST_LOG_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
         }
     }
 
 #ifdef DEBUG_SAVE_BUFFER_CONTENT
     if (fwrite(map.data, map.size, 1, g_debugBufferFile) != 1)
     {
-        GST_WARNING_OBJECT(filter, "Failed to write %u bytes to debug file\n", cleartext_size);
+        GST_WARNING_OBJECT(filter, "Failed to write %u bytes to debug file", cleartext_size);
     }
 #endif
 
@@ -455,7 +457,7 @@ static gboolean dtcpip_init(GstPlugin * dtcpip) {
      *
      * exchange the string 'Template ' with your description
      */
-    GST_DEBUG_CATEGORY_INIT(GST_CAT_DEFAULT, "dtcpip", 0,
+    GST_DEBUG_CATEGORY_INIT(gst_dtcpip_debug, "dtcpip", 0,
             "DTCP-IP library diagnostic output");
 
     return gst_element_register(dtcpip, "dtcpip", GST_RANK_NONE,
