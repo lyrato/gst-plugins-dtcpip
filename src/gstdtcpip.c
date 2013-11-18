@@ -54,9 +54,11 @@
 #  include <config.h>
 #endif
 
+#include <string.h>
 #include <gst/gst.h>
 #include "gstdtcpip.h"
 #include "rui_dtcpip.h"
+#include <glib/gprintf.h>
 
 // Uncomment to have output buffers saved to file
 //#define DEBUG_SAVE_BUFFER_CONTENT
@@ -82,35 +84,52 @@ static gchar* g_debugBufferFileName = "buffers.txt";
  * describe the real formats here.
  */
 static GstStaticPadTemplate sink_factory = GST_STATIC_PAD_TEMPLATE("sink",
-        GST_PAD_SINK, GST_PAD_ALWAYS, GST_STATIC_CAPS("ANY"));
+        GST_PAD_SINK, GST_PAD_ALWAYS,
+        GST_STATIC_CAPS("application/x-dtcp1"));
 
 static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE("src",
         GST_PAD_SRC, GST_PAD_ALWAYS, GST_STATIC_CAPS("ANY"));
 
 #define gst_dtcpip_parent_class parent_class
-G_DEFINE_TYPE(GstDtcpIp, gst_dtcpip, GST_TYPE_ELEMENT);
+G_DEFINE_TYPE(GstDtcpIp, gst_dtcpip, GST_TYPE_BASE_TRANSFORM);
 
 static void gst_dtcpip_set_property(GObject * object, guint prop_id,
         const GValue * value, GParamSpec * pspec);
 static void gst_dtcpip_get_property(GObject * object, guint prop_id,
         GValue * value, GParamSpec * pspec);
 
-static gboolean gst_dtcpip_pad_event(GstPad *pad, GstObject *parent,
-        GstEvent *event);
+//static gboolean gst_dtcpip_pad_event(GstPad *pad, GstObject *parent,
+//        GstEvent *event);
 
-static GstFlowReturn gst_dtcpip_chain(GstPad * pad, GstObject* parent,
-        GstBuffer * buf);
+//static GstFlowReturn gst_dtcpip_chain(GstPad * pad, GstObject* parent,
+//        GstBuffer * buf);
+static GstFlowReturn gst_dtcpip_transform (GstBaseTransform *trans,
+    GstBuffer * in_buf, GstBuffer * out_buf);
 
 static GstStateChangeReturn gst_dtcpip_change_state(GstElement *element,
         GstStateChange transition);
 
+static GstCaps *gst_dtcpip_transform_caps (GstBaseTransform *
+    trans, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
+
+static void
+gst_dtcpip_finalize (GObject * obj)
+{
+  //GstDtcpIp *filter = GST_DTCPIP (obj);
+
+  /* *todo* - free things up */
+  G_OBJECT_CLASS (parent_class)->finalize (obj);
+}
+
 /* initialize the dtcpip's class */
 static void gst_dtcpip_class_init(GstDtcpIpClass * klass) {
     GObjectClass *gobject_class = (GObjectClass *) klass;
-    GstElementClass *gstelement_class = (GstElementClass *) klass;
+    GstElementClass *element_class = (GstElementClass *) klass;
+    GstBaseTransformClass *trans_class = GST_BASE_TRANSFORM_CLASS (klass);
 
     gobject_class->set_property = gst_dtcpip_set_property;
     gobject_class->get_property = gst_dtcpip_get_property;
+    gobject_class->finalize = gst_dtcpip_finalize;
 
     g_object_class_install_property(gobject_class, PROP_DTCP1HOST,
             g_param_spec_string("dtcp1host", "dtcp1host",
@@ -126,18 +145,28 @@ static void gst_dtcpip_class_init(GstDtcpIpClass * klass) {
             g_param_spec_string("dtcpip_storage", "dtcpip_storage",
                     "Directory that contains client's keys",
                     "/media/truecrypt1/dll/test_keys", G_PARAM_READABLE));
-
+/*
     gst_element_class_set_details_simple(gstelement_class, "DTCP-IP decryption",
             "Decrypt/DTCP", // see docs/design/draft-klass.txt
             "Decrypts link-encrypted DTCP-IP DLNA content",
             "Doug Young <D.Young@cablelabs.com> 2/19/12 11:45 AM");
+*/
+    gst_element_class_set_static_metadata (element_class,
+        "DTCP/IP Decrypter", "Decoder",
+        "Decrypts DTCP/IP encrypted audio/video content",
+        "GStreamer maintainers <gstreamer-devel@lists.sourceforge.net>");
 
-    gst_element_class_add_pad_template(gstelement_class,
+    gst_element_class_add_pad_template(element_class,
             gst_static_pad_template_get(&src_factory));
-    gst_element_class_add_pad_template(gstelement_class,
+    gst_element_class_add_pad_template(element_class,
             gst_static_pad_template_get(&sink_factory));
 
-    gstelement_class->change_state = gst_dtcpip_change_state;
+    /* *TODO* - do we need state change method */
+    element_class->change_state = gst_dtcpip_change_state;
+
+    trans_class->passthrough_on_same_caps = FALSE;
+    trans_class->transform = gst_dtcpip_transform;
+    trans_class->transform_caps = gst_dtcpip_transform_caps;
 }
 
 /* initialize the new element
@@ -149,22 +178,21 @@ static void gst_dtcpip_init(GstDtcpIp * filter) {
     GST_DEBUG_OBJECT (filter, "Initializing");
 
     // Initialize sink pad
-    filter->sinkpad = gst_pad_new_from_static_template(&sink_factory, "sink");
+    //filter->sinkpad = gst_pad_new_from_static_template(&sink_factory, "sink");
 
-    gst_pad_set_event_function(filter->sinkpad,
-            GST_DEBUG_FUNCPTR(gst_dtcpip_pad_event));
+    //gst_pad_set_event_function(filter->sinkpad,
+    //        GST_DEBUG_FUNCPTR(gst_dtcpip_pad_event));
 
-    gst_pad_set_chain_function(filter->sinkpad,
-            GST_DEBUG_FUNCPTR(gst_dtcpip_chain));
+    //gst_pad_set_chain_function(filter->sinkpad,
+    //        GST_DEBUG_FUNCPTR(gst_dtcpip_chain));
 
-    GST_PAD_SET_PROXY_CAPS(filter->sinkpad);
-
-    gst_element_add_pad(GST_ELEMENT(filter), filter->sinkpad);
+    //GST_PAD_SET_PROXY_CAPS(filter->sinkpad);
+    //gst_element_add_pad(GST_ELEMENT(filter), filter->sinkpad);
 
     // Initialize src pad
-    filter->srcpad = gst_pad_new_from_static_template(&src_factory, "src");
-    GST_PAD_SET_PROXY_CAPS(filter->srcpad);
-    gst_element_add_pad(GST_ELEMENT(filter), filter->srcpad);
+    //filter->srcpad = gst_pad_new_from_static_template(&src_factory, "src");
+    //GST_PAD_SET_PROXY_CAPS(filter->srcpad);
+    //gst_element_add_pad(GST_ELEMENT(filter), filter->srcpad);
 
     // Initialize element properties
     filter->dtcp1host = NULL;
@@ -244,6 +272,7 @@ static void gst_dtcpip_get_property(GObject * object, guint prop_id,
     }
 }
 
+/*
 static gboolean gst_dtcpip_pad_event(GstPad *pad, GstObject *parent,
         GstEvent *event) {
     gboolean ret;
@@ -254,15 +283,13 @@ static gboolean gst_dtcpip_pad_event(GstPad *pad, GstObject *parent,
         GstCaps * caps;
 
         gst_event_parse_caps(event, &caps);
-        /* do something with the caps */
         GstPad *otherpad;
 
         otherpad = (pad == filter->srcpad) ? filter->sinkpad : filter->srcpad;
 
         gst_pad_set_caps(otherpad, caps);
 
-        /* and forward */
-        ret = gst_pad_event_default(pad, parent, event);
+         ret = gst_pad_event_default(pad, parent, event);
         break;
     }
     default:
@@ -271,7 +298,7 @@ static gboolean gst_dtcpip_pad_event(GstPad *pad, GstObject *parent,
     }
     return ret;
 }
-
+*/
 /* Element state change
  *
  */
@@ -370,6 +397,7 @@ static GstStateChangeReturn gst_dtcpip_change_state(GstElement *element,
 /* chain function
  * this function does the actual processing
  */
+/*
 static GstFlowReturn // GST_FLOW_OK, GST_FLOW_ERROR
 gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
     gint ret_val;
@@ -447,6 +475,152 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
 
     return gfr;
 }
+*/
+static GstFlowReturn
+gst_dtcpip_transform(GstBaseTransform *trans, GstBuffer * inbuf, GstBuffer * outbuf) {
+    GstDtcpIp *filter;
+    gint ret_val;
+    GstMapInfo map;
+    gchar* encrypted_data;
+    gchar* cleartext_data;
+    size_t encrypted_size, cleartext_size;
+    GstFlowReturn gfr = GST_FLOW_OK;
+    filter = GST_DTCPIP (trans);
+
+    gst_buffer_map(inbuf, &map, GST_MAP_READ);
+    GST_LOG_OBJECT(filter, "input buffer %p, %zu bytes", map.data, map.size);
+
+    // 1. set our encrypted data pointer
+    encrypted_data = (gchar*) map.data;
+    encrypted_size = map.size;
+
+    // 2. Call the DTCPIP decryption
+    if (!filter->dtcp_disabled) {
+        ret_val = g_dtcpip_ftable->dtcpip_snk_alloc_decrypt(
+                filter->session_handle, encrypted_data, encrypted_size,
+                &cleartext_data, &cleartext_size);
+        if (IS_DTCPIP_FAILURE(ret_val)) {
+            GST_ERROR_OBJECT(filter,
+                    "Failed decrypting: dtcpip_snk_alloc_decrypt(), ret_val=%d",
+                    ret_val);
+            return GST_FLOW_ERROR;
+        }
+    }
+
+    // 3. Create a newly allocated buffer (refcount=1) without any data
+    //if (!filter->dtcp_disabled) {
+    //    outbuf = gst_buffer_new_and_alloc(cleartext_size);
+    //}
+
+    // 4. Set the new buffer's data to be the decrypted data
+    if (!filter->dtcp_disabled) {
+        gst_buffer_fill(outbuf, 0, (guint8*) cleartext_data, cleartext_size);
+        gst_buffer_map(outbuf, &map, GST_MAP_READ);
+        GST_LOG_OBJECT(filter, "output buffer %p, %zu bytes", map.data,
+                map.size);
+    }
+
+    // 5. push the data to our sink pad, and onto the downstream element
+    //if (!filter->dtcp_disabled) {
+    //    gfr = gst_pad_push(filter->srcpad, outbuf);
+    //    if (gfr != GST_FLOW_OK) {
+    //        GST_LOG_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
+    //    }
+    //} else {
+        // Not doing any encryption so just push in buffer through
+    //    gfr = gst_pad_push(filter->srcpad, inbuf);
+    //    if (gfr != GST_FLOW_OK) {
+    //        GST_LOG_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
+    //    }
+    //}
+
+#ifdef DEBUG_SAVE_BUFFER_CONTENT
+    if (fwrite(map.data, map.size, 1, g_debugBufferFile) != 1)
+    {
+        GST_WARNING_OBJECT(filter, "Failed to write %u bytes to debug file", cleartext_size);
+    }
+#endif
+
+    // 6. Free the cleartext buffer that was allocated implicitly
+    if (!filter->dtcp_disabled) {
+        ret_val = g_dtcpip_ftable->dtcpip_snk_free(cleartext_data);
+        if (IS_DTCPIP_FAILURE(ret_val)) {
+            GST_ERROR_OBJECT(filter,
+                    "Failure calling dtcpip_snk_free(), ret_val=%d", ret_val);
+            gfr = GST_FLOW_ERROR;
+        }
+    }
+
+    return gfr;
+}
+
+/* given @caps on the src or sink pad (given by @direction)
+ * calculate the possible caps on the other pad.
+ *
+ * Returns new caps, unref after usage.
+ */
+static GstCaps *
+gst_dtcpip_transform_caps (GstBaseTransform * trans,
+    GstPadDirection direction, GstCaps * caps, GstCaps * filter)
+{
+  GstCaps *ret;
+  GstStructure* caps_struct;
+  //gint caps_struct_cnt;
+  //int i;
+  GstDtcpIp* dtcpip = GST_DTCPIP (trans);
+
+  GST_INFO_OBJECT (trans, "Called with caps: %" GST_PTR_FORMAT, caps);
+  if (direction == GST_PAD_SRC) {
+      // For source pad, return caps on sink pad which will always be "application/x-dtcp1
+      GST_INFO_OBJECT (trans, "Source pad direction, should return x-dtcp");
+      if (filter) {
+        // If a filter was supplied, Need to return an intersection b/w caps and filter supplied
+        ret = gst_caps_intersect_full (filter, caps, GST_CAPS_INTERSECT_FIRST);
+        GST_INFO_OBJECT (trans, "returning intersection of caps & filter");
+      } else {
+        ret = gst_caps_ref (caps);
+        GST_INFO_OBJECT (trans, "No filter was supplied so just returning caps");
+      }
+
+      // Make sure returning caps are what we expect which is x-dtcp1 & extract server & port
+      if (gst_caps_get_size(ret) == 1) {
+          caps_struct = gst_caps_get_structure(ret, 0);
+          GST_INFO_OBJECT(trans, "Got ret struct %" GST_PTR_FORMAT, caps_struct);
+          if (gst_structure_get_value(caps_struct, "DTCP1HOST") != NULL) {
+            dtcpip->dtcp1host = g_value_dup_string(gst_structure_get_value(caps_struct, "DTCP1HOST"));
+            GST_INFO_OBJECT(trans, "Set dtcp host to: %s", dtcpip->dtcp1host);
+          } else
+            GST_INFO_OBJECT(trans, "Has no field DTCP1HOST");
+          if (gst_structure_get_value(caps_struct, "DTCP1PORT") != NULL) {
+            dtcpip->dtcp1port = g_value_get_int(gst_structure_get_value(caps_struct, "DTCP1PORT"));
+            GST_INFO_OBJECT(trans, "Set dtcp port to: %d", dtcpip->dtcp1port);
+          } else
+            GST_INFO_OBJECT(trans, "Has no field DTCP1PORT");
+      } else {
+          GST_INFO_OBJECT(trans, "Ret caps had unexpect struct cnt: %d %" GST_PTR_FORMAT,
+                  gst_caps_get_size(ret), caps);
+      }
+
+      if (gst_caps_is_any(ret)) {
+          GST_INFO_OBJECT(trans, "Forcing return of x-dtcp1");
+          ret = gst_caps_new_empty_simple ("application/x-dtcp1");
+      } else
+          GST_INFO_OBJECT(trans, "Returning x-dtcp1");
+
+  } else if (direction == GST_PAD_SINK) {
+      GST_INFO_OBJECT (trans, "sink pad direction");
+      // For sink pad, return caps on source pad which will always be "any"
+      ret = gst_caps_new_any();
+
+  } else {
+      GST_ERROR_OBJECT (trans, "Returning NULL due to unsupported direction: %d", direction);
+      ret = NULL;
+  }
+
+  GST_INFO_OBJECT (trans, "returning caps: %" GST_PTR_FORMAT, ret);
+  return ret;
+}
+
 
 /* entry point to initialize the plug-in
  * initialize the plug-in itself
@@ -457,10 +631,11 @@ static gboolean dtcpip_init(GstPlugin * dtcpip) {
      *
      * exchange the string 'Template ' with your description
      */
+    g_printf("dtcpip_init() called\n");
     GST_DEBUG_CATEGORY_INIT(gst_dtcpip_debug, "dtcpip", 0,
             "DTCP-IP library diagnostic output");
 
-    return gst_element_register(dtcpip, "dtcpip", GST_RANK_NONE,
+    return gst_element_register(dtcpip, "dtcpip", GST_RANK_PRIMARY,
             GST_TYPE_DTCPIP);
 }
 

@@ -47,6 +47,7 @@
 #define __GST_DTCPIP_H__
 
 #include <gst/gst.h>
+#include <gst/base/gstbasetransform.h>
 
 G_BEGIN_DECLS
 
@@ -66,7 +67,7 @@ typedef struct _GstDtcpIp GstDtcpIp;
 typedef struct _GstDtcpIpClass GstDtcpIpClass;
 
 struct _GstDtcpIp {
-    GstElement element;
+    GstBaseTransform element;
 
     GstPad *sinkpad, *srcpad;
 
@@ -82,7 +83,7 @@ struct _GstDtcpIp {
 };
 
 struct _GstDtcpIpClass {
-    GstElementClass parent_class;
+    GstBaseTransformClass parent_class;
 };
 
 GType gst_dtcpip_get_type(void);
