@@ -298,7 +298,7 @@ static GstStateChangeReturn gst_dtcpip_change_state(GstElement *element,
     gchar dtcpip_version[1024];
     gboolean decrypting = !filter->dtcp_disabled && !filter->passthru_mode;
 
-    GST_INFO_OBJECT(filter, "GST_STATE_CHANGE_%s_TO_%s",
+    GST_DEBUG_OBJECT(filter, "GST_STATE_CHANGE_%s_TO_%s",
             gst_element_state_get_name(
                     GST_STATE_TRANSITION_CURRENT(transition)),
             gst_element_state_get_name(GST_STATE_TRANSITION_NEXT(transition)));
