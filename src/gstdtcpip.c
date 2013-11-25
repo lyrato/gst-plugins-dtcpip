@@ -395,17 +395,17 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
     gchar* cleartext_data;
     size_t encrypted_size, cleartext_size;
     GstBuffer *outbuf;
+    gboolean decrypting;
     GstFlowReturn gfr = GST_FLOW_ERROR;
-    gboolean decrypting = TRUE;
     filter = GST_DTCPIP (parent);
+
+    decrypting = !filter->dtcp_disabled && !filter->passthru_mode;
+    if (!decrypting)
+        GST_INFO_OBJECT(filter, "Not decrypting due to disable env: %d and/or passthru mode: %d",
+                filter->dtcp_disabled, filter->passthru_mode);
+
     gst_buffer_map(inbuf, &map, GST_MAP_READ);
     GST_LOG_OBJECT(filter, "input buffer %p, %zu bytes", map.data, map.size);
-
-    if (filter->dtcp_disabled || filter->passthru_mode) {
-        decrypting = FALSE;
-        GST_INFO_OBJECT(filter, "Turning decrypting off due to disable env: %d, passthru mode: %d",
-                filter->dtcp_disabled, filter->passthru_mode);
-    }
 
     // 1. set our encrypted data pointer
     encrypted_data = (gchar*) map.data;
