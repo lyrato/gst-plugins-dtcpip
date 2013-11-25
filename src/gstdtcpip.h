@@ -72,6 +72,7 @@ struct _GstDtcpIp {
 
     // Properties
     gboolean dtcp_disabled;
+    gboolean passthru_mode;
     gchar *dtcp1host;
     guint dtcp1port;
     gchar *dtcpip_storage;

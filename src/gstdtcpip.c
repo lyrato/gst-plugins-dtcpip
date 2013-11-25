@@ -65,9 +65,11 @@ GST_DEBUG_CATEGORY(gst_dtcpip_debug);
 #define GST_CAT_DEFAULT gst_dtcpip_debug
 
 enum {
-    PROP_0, PROP_DTCP1HOST, PROP_DTCP1PORT, PROP_DTCPIP_STORAGE
+    PROP_0, PROP_DTCP1HOST, PROP_DTCP1PORT, PROP_DTCPIP_STORAGE, PROP_PASSTHRU_MODE
 };
 
+/* Permanently disable DTCP/IP through env variable setting
+ * so no external libraries are loaded */
 #define RUIH_GST_DTCP_DISABLE "RUIH_GST_DTCP_DISABLE"
 
 #define RTLD_NOW    0x00002     /* Immediate function call binding.  */
@@ -127,6 +129,11 @@ static void gst_dtcpip_class_init(GstDtcpIpClass * klass) {
                     "Directory that contains client's keys",
                     "/media/truecrypt1/dll/test_keys", G_PARAM_READABLE));
 
+    g_object_class_install_property (gobject_class, PROP_PASSTHRU_MODE,
+        g_param_spec_boolean ("passthru-mode", "Pass through mode",
+            "Pass data through without trying to decrypt",
+            FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
     gst_element_class_set_details_simple(gstelement_class, "DTCP-IP decryption",
             "Decrypt/DTCP", // see docs/design/draft-klass.txt
             "Decrypts link-encrypted DTCP-IP DLNA content",
@@ -169,6 +176,7 @@ static void gst_dtcpip_init(GstDtcpIp * filter) {
     // Initialize element properties
     filter->dtcp1host = NULL;
     filter->dtcp1port = -1;
+    filter->passthru_mode = FALSE;
 
     // Read env vars to get disable flag, storage path and key file name
     filter->dtcp_disabled = FALSE;
@@ -216,6 +224,10 @@ static void gst_dtcpip_set_property(GObject * object, guint prop_id,
         filter->dtcp1port = g_value_get_uint(value);
         GST_INFO_OBJECT(filter, "Port property: %d", filter->dtcp1port);
         break;
+    case PROP_PASSTHRU_MODE:
+      filter->passthru_mode = g_value_get_boolean (value);
+      GST_INFO_OBJECT(filter, "Passthru mode: %d", filter->passthru_mode);
+      break;
     default:
         GST_INFO_OBJECT(filter, "Unknown property id: %d", prop_id);
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -238,6 +250,9 @@ static void gst_dtcpip_get_property(GObject * object, guint prop_id,
     case PROP_DTCPIP_STORAGE:
         g_value_set_string(value, filter->dtcpip_storage);
         break;
+    case PROP_PASSTHRU_MODE:
+      g_value_set_boolean (value, filter->passthru_mode);
+      break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -281,6 +296,7 @@ static GstStateChangeReturn gst_dtcpip_change_state(GstElement *element,
     GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
     GstDtcpIp *filter = GST_DTCPIP (element);
     gchar dtcpip_version[1024];
+    gboolean decrypting = (!filter->dtcp_disabled && !filter->passthru_mode) ? TRUE : FALSE;
 
     GST_INFO_OBJECT(filter, "GST_STATE_CHANGE_%s_TO_%s",
             gst_element_state_get_name(
@@ -290,7 +306,7 @@ static GstStateChangeReturn gst_dtcpip_change_state(GstElement *element,
     switch (transition) {
     case GST_STATE_CHANGE_NULL_TO_READY:
         /* Allocate non-stream-specific resources (libs, mem) */
-        if (!filter->dtcp_disabled) {
+        if (decrypting) {
             g_dtcpip_ftable->dtcpip_cmn_get_version(dtcpip_version,
                     sizeof(dtcpip_version));
             GST_DEBUG_OBJECT(filter, "Got dtcpip_cmn_get_version\"=%s\"",
@@ -312,7 +328,7 @@ static GstStateChangeReturn gst_dtcpip_change_state(GstElement *element,
         break;
 
     case GST_STATE_CHANGE_READY_TO_PAUSED:
-        if (!filter->dtcp_disabled) {
+        if (decrypting) {
             /* Allocate stream-specific resources */
             ret_val = g_dtcpip_ftable->dtcpip_snk_open(filter->dtcp1host,
                     filter->dtcp1port, &(filter->session_handle));
@@ -341,7 +357,7 @@ static GstStateChangeReturn gst_dtcpip_change_state(GstElement *element,
     switch (transition) {
     case GST_STATE_CHANGE_PAUSED_TO_READY:
         /* De-llocate stream-specific resources */
-        if (!filter->dtcp_disabled) {
+        if (decrypting) {
             ret_val = g_dtcpip_ftable->dtcpip_snk_close(filter->session_handle);
             if (IS_DTCPIP_FAILURE(ret_val)) {
                 GST_ERROR_OBJECT(filter, "Problems closing");
@@ -380,17 +396,23 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
     size_t encrypted_size, cleartext_size;
     GstBuffer *outbuf;
     GstFlowReturn gfr = GST_FLOW_ERROR;
-
+    gboolean decrypting = TRUE;
     filter = GST_DTCPIP (parent);
     gst_buffer_map(inbuf, &map, GST_MAP_READ);
     GST_LOG_OBJECT(filter, "input buffer %p, %zu bytes", map.data, map.size);
+
+    if (filter->dtcp_disabled || filter->passthru_mode) {
+        decrypting = FALSE;
+        GST_INFO_OBJECT(filter, "Turning decrypting off due to disable env: %d, passthru mode: %d",
+                filter->dtcp_disabled, filter->passthru_mode);
+    }
 
     // 1. set our encrypted data pointer
     encrypted_data = (gchar*) map.data;
     encrypted_size = map.size;
 
     // 2. Call the DTCPIP decryption
-    if (!filter->dtcp_disabled) {
+    if (decrypting) {
         ret_val = g_dtcpip_ftable->dtcpip_snk_alloc_decrypt(
                 filter->session_handle, encrypted_data, encrypted_size,
                 &cleartext_data, &cleartext_size);
@@ -403,12 +425,12 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
     }
 
     // 3. Create a newly allocated buffer (refcount=1) without any data
-    if (!filter->dtcp_disabled) {
+    if (decrypting) {
         outbuf = gst_buffer_new_and_alloc(cleartext_size);
     }
 
     // 4. Set the new buffer's data to be the decrypted data
-    if (!filter->dtcp_disabled) {
+    if (decrypting) {
         gst_buffer_fill(outbuf, 0, (guint8*) cleartext_data, cleartext_size);
         gst_buffer_map(outbuf, &map, GST_MAP_READ);
         GST_LOG_OBJECT(filter, "output buffer %p, %zu bytes", map.data,
@@ -416,7 +438,7 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
     }
 
     // 5. push the data to our sink pad, and onto the downstream element
-    if (!filter->dtcp_disabled) {
+    if (decrypting) {
         gfr = gst_pad_push(filter->srcpad, outbuf);
         if (gfr != GST_FLOW_OK) {
             GST_LOG_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
@@ -437,7 +459,7 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
 #endif
 
     // 6. Free the cleartext buffer that was allocated implicitly
-    if (!filter->dtcp_disabled) {
+    if (decrypting) {
         ret_val = g_dtcpip_ftable->dtcpip_snk_free(cleartext_data);
         if (IS_DTCPIP_FAILURE(ret_val)) {
             GST_ERROR_OBJECT(filter,
