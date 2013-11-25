@@ -401,7 +401,7 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * inbuf) {
 
     decrypting = !filter->dtcp_disabled && !filter->passthru_mode;
     if (!decrypting)
-        GST_INFO_OBJECT(filter, "Not decrypting due to disable env: %d and/or passthru mode: %d",
+        GST_LOG_OBJECT(filter, "Not decrypting due to disable env: %d and/or passthru mode: %d",
                 filter->dtcp_disabled, filter->passthru_mode);
 
     gst_buffer_map(inbuf, &map, GST_MAP_READ);
