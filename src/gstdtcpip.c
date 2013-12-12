@@ -424,7 +424,7 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * buf) {
         gst_buffer_unref (buf);
 
         buf = gst_buffer_new_and_alloc(cleartext_size);
-     	gst_buffer_map(buf, &map, GST_MAP_READ);
+        gst_buffer_map(buf, &map, GST_MAP_READ);
         
         // 4. Set the new buffer's data to be the decrypted data
         gst_buffer_fill(buf, 0, (guint8*) cleartext_data, cleartext_size);
