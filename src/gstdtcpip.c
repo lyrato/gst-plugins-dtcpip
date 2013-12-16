@@ -432,7 +432,7 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * buf) {
     // 5. push the data to our sink pad, and onto the downstream element
     //    could be the original input buffer or the decrypted buffer...
     gfr = gst_pad_push(filter->srcpad, buf);
-    if (gfr != GST_FLOW_OK && gfr != GST_FLOW_FLUSHING)
+    if (gfr < GST_FLOW_OK && gfr != GST_FLOW_FLUSHING)
         GST_WARNING_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
     
 #ifdef DEBUG_SAVE_BUFFER_CONTENT
