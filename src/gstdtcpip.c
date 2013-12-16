@@ -92,6 +92,8 @@ static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE("src",
 #define gst_dtcpip_parent_class parent_class
 G_DEFINE_TYPE(GstDtcpIp, gst_dtcpip, GST_TYPE_ELEMENT);
 
+void dtcpip_snk_free(gpointer* cleartext_data);
+
 static void gst_dtcpip_set_property(GObject * object, guint prop_id,
         const GValue * value, GParamSpec * pspec);
 static void gst_dtcpip_get_property(GObject * object, guint prop_id,
@@ -423,20 +425,14 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * buf) {
 
         // 4. Create a newly allocated buffer (refcount=1) 
         //    and set the new buffer's data to be the decrypted data
-        buf = gst_buffer_new_wrapped(cleartext_data, cleartext_size);
-
-        // 5. Free the cleartext buffer that was allocated implicitly
-        ret_val = g_dtcpip_ftable->dtcpip_snk_free(cleartext_data);
-        if (IS_DTCPIP_FAILURE(ret_val)) {
-            GST_ERROR_OBJECT(filter,
-                    "Failure calling dtcpip_snk_free(), ret_val=%d", ret_val);
-        }
+        buf = gst_buffer_new_wrapped_full(0, cleartext_data, cleartext_size, 0, cleartext_size,
+                cleartext_data, (GDestroyNotify)dtcpip_snk_free);
      }
 
     // 5. push the data to our sink pad, and onto the downstream element
     //    could be the original input buffer or the decrypted buffer...
     gfr = gst_pad_push(filter->srcpad, buf);
-    if (gfr != GST_FLOW_OK)
+    if (gfr != GST_FLOW_OK && gfr != GST_FLOW_FLUSHING)
         GST_WARNING_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
     
 #ifdef DEBUG_SAVE_BUFFER_CONTENT
@@ -449,6 +445,17 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * buf) {
 #endif
 
     return gfr;
+}
+
+/**
+ * DestroyNotify method supplied when creating wrapped buffer in chain method.
+ * It is called to free the cleartext buffer that was allocated implicitly.
+ */
+void dtcpip_snk_free(gpointer* cleartext_data)
+{
+    gint ret_val = g_dtcpip_ftable->dtcpip_snk_free((gchar*)cleartext_data);
+    if (IS_DTCPIP_FAILURE(ret_val))
+        GST_ERROR("Failure calling dtcpip_snk_free(), ret_val=%d", ret_val);
 }
 
 /* entry point to initialize the plug-in
