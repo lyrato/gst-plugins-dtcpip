@@ -398,12 +398,11 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * buf) {
     GstFlowReturn gfr = GST_FLOW_ERROR;
     filter = GST_DTCPIP (parent);
 
-    gst_buffer_map(buf, &map, GST_MAP_READ);
-    GST_LOG_OBJECT(filter, "buffer %p, %zu bytes", map.data, map.size);
-    
     decrypting = !filter->dtcp_disabled && !filter->passthru_mode;
     if (decrypting) {
         // 1. set our encrypted data pointer
+        gst_buffer_map(buf, &map, GST_MAP_READ);
+        GST_LOG_OBJECT(filter, "buffer %p, %zu bytes", map.data, map.size);
         encrypted_data = (gchar*) map.data;
         encrypted_size = map.size;
         
@@ -418,40 +417,36 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * buf) {
             return GST_FLOW_ERROR;
         }
         
-        // 3. Create a newly allocated buffer (refcount=1) without any data
-        if (GST_IS_BUFFER(buf))
-            gst_buffer_unmap(buf, &map);
+        // 3. Release the input buffer
+        gst_buffer_unmap(buf, &map);
         gst_buffer_unref (buf);
 
-        buf = gst_buffer_new_and_alloc(cleartext_size);
-        gst_buffer_map(buf, &map, GST_MAP_READ);
-        
-        // 4. Set the new buffer's data to be the decrypted data
-        gst_buffer_fill(buf, 0, (guint8*) cleartext_data, cleartext_size);
-     }
+        // 4. Create a newly allocated buffer (refcount=1) 
+        //    and set the new buffer's data to be the decrypted data
+        buf = gst_buffer_new_wrapped(cleartext_data, cleartext_size);
 
-    // 5. push the data to our sink pad, and onto the downstream element
-    gfr = gst_pad_push(filter->srcpad, buf);
-    if (gfr != GST_FLOW_OK)
-        GST_LOG_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
-    
-#ifdef DEBUG_SAVE_BUFFER_CONTENT
-    if (fwrite(map.data, map.size, 1, g_debugBufferFile) != 1)
-    {
-        GST_WARNING_OBJECT(filter, "Failed to write %u bytes to debug file", cleartext_size);
-    }
-#endif
-
-    // 6. Free the cleartext buffer that was allocated implicitly
-    if (decrypting) {
+        // 5. Free the cleartext buffer that was allocated implicitly
         ret_val = g_dtcpip_ftable->dtcpip_snk_free(cleartext_data);
         if (IS_DTCPIP_FAILURE(ret_val)) {
             GST_ERROR_OBJECT(filter,
                     "Failure calling dtcpip_snk_free(), ret_val=%d", ret_val);
         }
+     }
+
+    // 5. push the data to our sink pad, and onto the downstream element
+    //    could be the original input buffer or the decrypted buffer...
+    gfr = gst_pad_push(filter->srcpad, buf);
+    if (gfr != GST_FLOW_OK)
+        GST_WARNING_OBJECT(filter, "Failure with flow, ret_val=%d", gfr);
+    
+#ifdef DEBUG_SAVE_BUFFER_CONTENT
+    gst_buffer_map(buf, &map, GST_MAP_READ);
+    if (fwrite(map.data, map.size, 1, g_debugBufferFile) != 1)
+    {
+        GST_WARNING_OBJECT(filter, "Failed to write %u bytes to debug file", map.size);
     }
-    if (GST_IS_BUFFER(buf))
-        gst_buffer_unmap(buf, &map);
+    gst_buffer_unmap(buf, &map);
+#endif
 
     return gfr;
 }
