@@ -453,7 +453,7 @@ gst_dtcpip_chain(GstPad * pad, GstObject * parent, GstBuffer * buf) {
  */
 void gst_dtcpip_free_cleartext_data(gpointer cleartext_data)
 {
-    gint ret_val = g_dtcpip_ftable->dtcpip_snk_free((gchar*)cleartext_data);
+    gint ret_val = g_dtcpip_ftable->dtcpip_snk_free(cleartext_data);
     if (IS_DTCPIP_FAILURE(ret_val))
         GST_ERROR("Failure calling dtcpip_snk_free(), ret_val=%d", ret_val);
 }
