@@ -68,10 +68,6 @@ enum {
     PROP_0, PROP_DTCP1HOST, PROP_DTCP1PORT, PROP_DTCPIP_STORAGE, PROP_PASSTHRU_MODE
 };
 
-/* Permanently disable DTCP/IP through env variable setting
- * so no external libraries are loaded */
-#define RUIH_GST_DTCP_DISABLE "RUIH_GST_DTCP_DISABLE"
-
 #define RTLD_NOW    0x00002     /* Immediate function call binding.  */
 
 #ifdef DEBUG_SAVE_BUFFER_CONTENT
@@ -179,24 +175,24 @@ static void gst_dtcpip_init(GstDtcpIp * filter) {
     filter->dtcp1host = NULL;
     filter->dtcp1port = -1;
     filter->passthru_mode = FALSE;
+    filter->dtcp_disabled = TRUE;
 
-    // Read env vars to get disable flag, storage path and key file name
-    filter->dtcp_disabled = FALSE;
-
-    if (getenv(RUIH_GST_DTCP_DISABLE)) {
-        GST_WARNING_OBJECT(filter, "Disabling DTCP due to env var set: %s",
-                RUIH_GST_DTCP_DISABLE);
-        filter->dtcp_disabled = TRUE;
-    } else {
+    // Read env vars to storage path and key file name
+    if (!getenv(RUIH_GST_DTCP_DLL_ENV))
         GST_INFO_OBJECT(filter,
-                "DTCP is enabled due to disable env var NOT set: %s",
-                RUIH_GST_DTCP_DISABLE);
-
+                "DTCP is disabled due to env var NOT set: %s",
+                RUIH_GST_DTCP_DLL_ENV);
+    else if (!getenv(RUIH_GST_DTCP_KEY_STORAGE_ENV))
+        GST_INFO_OBJECT(filter,
+                "DTCP is disabled due to env var NOT set: %s",
+                RUIH_GST_DTCP_KEY_STORAGE_ENV);
+    else {
         GST_INFO_OBJECT(filter, "Initializing shared library");
-        if (!rui_dtcpip_init()) {
-            GST_ERROR_OBJECT(filter, "Problems initializing shared library");
-        } else {
-            GST_INFO_OBJECT(filter, "Successfully initialized library");
+        if (!rui_dtcpip_init())
+            GST_ERROR_OBJECT(filter, "DTCP is disabled due to problems initializing shared library");
+        else {
+            filter->dtcp_disabled = FALSE;
+            GST_INFO_OBJECT(filter, "Successfully initialized library, DTCP/IP enabled");
         }
     }
 
